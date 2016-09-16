@@ -195,6 +195,13 @@ class HashTable_OA_KVL {
     }
     
     /*
+     * IsValidEntry() - Whether the entry has a key and at least one value
+     */
+    inline bool IsValidEntry() const {
+      return IsProbeEndForInsert() == false;
+    }
+    
+    /*
      * IsProbeEndForSearch() - Whether it is the end of probing
      *                         for search operation
      *
