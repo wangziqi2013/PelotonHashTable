@@ -38,6 +38,13 @@ int main() {
   av2.push_back(A{2});
 
   printf("Capacity = %lu\n", av2.capacity());
+  
+  // Let it reallocate an array of size 8
+  // Unused memory is not initialized
+  av2.reserve(8);
+  
+  // For this the default constructor is called
+  av2.resize(9);
 
   return 0;
 }
