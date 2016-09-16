@@ -8,6 +8,27 @@
 namespace peloton {
 namespace index {
 
+#define DEBUG_PRINT
+
+#ifdef DEBUG_PRINT
+
+#define dbg_printf(fmt, ...)                              \
+  do {                                                    \
+    fprintf(stderr, "%-24s: " fmt, __FUNCTION__, ##__VA_ARGS__); \
+    fflush(stdout);                                       \
+  } while (0);
+
+#else
+
+static void dummy(const char*, ...) {}
+
+#define dbg_printf(fmt, ...)   \
+  do {                         \
+    dummy(fmt, ##__VA_ARGS__); \
+  } while (0);
+
+#endif
+
 /*
  * class LoadFactorHalfFull - Compute load factor as 0.5
  */
@@ -243,12 +264,12 @@ class HashTable_OA_KVL {
    * compute
    */
   void SetSizeAndMask(uint64_t requested_size) {
-    int leading_zero = __builtin_clz(requested_size);
+    int leading_zero = __builtin_clzl(requested_size);
     int effective_bits = 64 - leading_zero;
     
     // It has a 1 bit on the highest bit
-    uint64_t entry_count = 0x0000000000000001 << effective_bits;
-    uint64_t index_mask = entry_count - 1;
+    entry_count = 0x0000000000000001 << effective_bits;
+    index_mask = entry_count - 1;
 
     // If this happens then requested size itself is a power of 2
     // and we just counted more than 1 bit
@@ -275,7 +296,7 @@ class HashTable_OA_KVL {
     if(proposed_size > requested_size) {
       requested_size = proposed_size;
     }
-    
+
     return requested_size;
   }
   
@@ -335,6 +356,9 @@ class HashTable_OA_KVL {
     entry_list_p = \
       static_cast<HashEntry *>(malloc(sizeof(HashEntry) * entry_count));
     assert(entry_list_p != nullptr);
+    
+    dbg_printf("Hash table size = %lu\n", entry_count);
+    dbg_printf("Resize threshold = %lu\n", resize_threshold);
     
     return;
   }
