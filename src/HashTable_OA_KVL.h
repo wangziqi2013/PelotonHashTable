@@ -194,6 +194,16 @@ class HashTable_OA_KVL {
              
       return status == StatusCode::SINGLE_VALUE;
     }
+    
+    /*
+     * HasKeyValueList() - returns if the entry has a key value list
+     *
+     * The trick here is that we consider a normal pointer value
+     * as larger than any of the defined status code
+     */
+    inline bool HasKeyValueList() const {
+      return status >= StatusCode::MULTIPLE_VALUES;
+    }
   };
   
  private:
@@ -267,7 +277,28 @@ class HashTable_OA_KVL {
     return requested_size;
   }
   
+  /*
+   * FreeKeyValueList() - Frees the key value list associated with HashEntry
+   *                      if there is one
+   *
+   * Note that we always use malloc and free for memory allocation in this
+   * class, so free() should be used
+   */
+  void FreeKeyValueList() {
+    uint64_t remaining = active_entry_count;
+    HashEntry *entry_p = entry_list_p;
+    
+    while(remaining > 0) {
+      if(entry_p->HasKeyValueList() == true) {
+        remaining--;
+        
+        
+      }
+    }
+  }
+  
  public:
+   
   /*
    * Constructor - Initialize hash table entry and all of its members
    */
@@ -275,6 +306,7 @@ class HashTable_OA_KVL {
                    const KeyEqualityChecker &p_key_eq_obj = KeyEqualityChecker{},
                    const LoadFactorCalculator &p_lfc = LoadFactorCalculator{},
                    uint64_t init_entry_count = 0) :
+    active_entry_count{0},
     key_hash_obj{p_key_hash_obj},
     key_eq_obj{p_key_eq_obj},
     lfc{p_lfc} {
@@ -284,7 +316,30 @@ class HashTable_OA_KVL {
     // First round it up to a power of 2 and then compute size and mask
     SetSizeAndMask(init_entry_count);
     
-
+    // Set the threshold by setting the load factor
+    resize_threshold = lfc(entry_count);
+    
+    // We do not call new to avoid calling the constructor for each key and
+    // value
+    // Note that sizeof() takes padding into consideration so we are OK
+    entry_list_p = malloc(sizeof(HashEntry) * entry_count);
+    assert(entry_list_p != nullptr);
+    
+    return;
+  }
+  
+  /*
+   * Destructor - Frees all memory, including HashEntry array and KeyValueList
+   */
+  ~HashTable_OA_KVL() {
+    // Free all key value list first
+    FreeKeyValueList();
+    
+    // Free the array
+    assert(entry_list_p);
+    free(entry_list_p);
+    
+    return;
   }
 };
 
