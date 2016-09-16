@@ -332,7 +332,8 @@ class HashTable_OA_KVL {
     // We do not call new to avoid calling the constructor for each key and
     // value
     // Note that sizeof() takes padding into consideration so we are OK
-    entry_list_p = malloc(sizeof(HashEntry) * entry_count);
+    entry_list_p = \
+      static_cast<HashEntry *>(malloc(sizeof(HashEntry) * entry_count));
     assert(entry_list_p != nullptr);
     
     return;
