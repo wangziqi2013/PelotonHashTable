@@ -29,6 +29,11 @@ static void dummy(const char*, ...) {}
 
 #endif
 
+// I copied this from Linux kernel code to favor branch prediction unit on CPU
+// if there is one
+#define likely(x)   __builtin_expect(!!(x), 1)
+#define unlikely(x) __builtin_expect(!!(x), 0)
+
 /*
  * class LoadFactorHalfFull - Compute load factor as 0.5
  *
@@ -251,6 +256,20 @@ class HashTable_OA_KVL {
     inline bool HasKeyValueList() const {
       return status >= StatusCode::MULTIPLE_VALUES;
     }
+    
+    /*
+     * IsProbeEndForSearchStatic() - The static version is for callbacks
+     */
+    static inline bool IsProbeEndForSearchStatic(HashEntry *entry_p) {
+      return entry_p->IsProbeEndForSearch();
+    }
+    
+    /*
+     * IsProbeEndForInsertStatic() - The static version is for callbacks
+     */
+    static inline bool IsProbeEndForInsertStatic(HashEntry *entry_p) {
+      return entry_p->IsProbeEndForInsert();
+    }
   };
   
  private:
@@ -355,6 +374,28 @@ class HashTable_OA_KVL {
   }
   
   /*
+   * GetNextEntry() - Get the next entry
+   *
+   * This function takes care of wrapping back and also branch prediction
+   * since wrap back is a rare event, the compiler should have this piece
+   * of information, and arrange code intelligently to let the CPU
+   * favor the branch that is likely to be execute, i.e. no wrapping back
+   */
+  inline void GetNextEntry(HashEntry **entry_p_p, uint64_t *index_p) {
+    // Increase them first, since usually we do not need a wrap back
+    (*index_p)++;
+    (*entry_p_p)++;
+    
+    // If the index is already out of bound
+    if(unlikely(*index_p == entry_count)) {
+      *index_p = 0;
+      *entry_p_p = entry_list_p;
+    }
+    
+    return;
+  }
+  
+  /*
    * ProbeForInsert() - Given a hash value, probe it in the array and return
    *                    the first HashEntry pointer that this hash value's
    *                    key could be inserted into
@@ -366,24 +407,24 @@ class HashTable_OA_KVL {
     // Compute the starting point for probing the hash table
     uint64_t index = hash_value & index_mask;
     HashEntry *entry_p = entry_list_p + index;
-    
+
     // Keep probing until there is a entry that is not free
     // Since we always assume the table does not become entirely full,
     // a free slot could always be inserted
     while(entry_p->IsProbeEndForInsert() == false) {
-      entry_p++;
-      index++;
-      
-      // If the we have reached the end of the array and need to wrap back
-      if(index == entry_count) {
-        index = 0;
-        entry_p = entry_list_p;
-      }
+      GetNextEntry(&entry_p, &index);
     }
-    
+
     // It is either a deleted or free entry
     // which could be determined by only 1 instruction
     return entry_p;
+  }
+  
+  /*
+   * ProbeForSearch() - Probe the array to find a slot for
+   */
+  HashEntry *ProbeForSearch(uint64_t hash_value) {
+    return Probe<HashEntry::IsProbeEndForSearchStatic>(hash_value);
   }
   
   /*
