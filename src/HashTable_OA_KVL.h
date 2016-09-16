@@ -1,6 +1,7 @@
 
 #pragma once
 
+#include <cassert>
 #include <utility>
 #include <functional>
 
@@ -100,6 +101,11 @@ class HashTable_OA_KVL {
    *                   hash table
    */
   class HashEntry {
+   private:
+    // This is the minimum entry count
+    static constexpr uint64_t MINIMUM_ENTRY_COUNT = 32;
+    static constexpr uint64_t PAGE_SIZE = 4096;
+    
    public:
 
     /*
@@ -212,10 +218,72 @@ class HashTable_OA_KVL {
   // We compute threshold for next resizing, and cache it here
   uint64_t resize_threshold;
   
-  HashTable_OA_KVL(const KeyHashFunc &key_hash_func = KeyHashFunc{},
-                   const KeyEqualityChecker &key_eq_obj = KeyEqualityChecker{},
-                   const LoadFactorCalculator &lfc = LoadFactorCalculator{},
-                   int init_slot_count = -1) {
+  KeyHashFunc key_hash_obj;
+  KeyEqualityChecker key_eq_obj;
+  LoadFactorCalculator lfc;
+  
+ private:
+   
+  /*
+   * SetSizeAndMask() - Sets entry count and index mask
+   *
+   * This is only called for initialization routine, since for later grow
+   * of the table we always double the table, so the valus are easier to
+   * compute
+   */
+  void SetSizeAndMask(uint64_t requested_size) {
+    int leading_zero = __builtin_clz(requested_size);
+    int effective_bits = 64 - leading_zero;
+    
+    // It has a 1 bit on the highest bit
+    uint64_t entry_count = 0x0000000000000001 << effective_bits;
+    uint64_t index_mask = entry_count - 1;
+
+    // If this happens then requested size itself is a power of 2
+    // and we just counted more than 1 bit
+    if(requested_size == (entry_count >> 1)) {
+      entry_count >>= 1;
+      index_mask >>= 1;
+    }
+    
+    return;
+  }
+  
+  /*
+   * GetInitEntryCount() - Returns the initial entry count given a requested
+   *                       size of the hash table
+   */
+  static uint64_t GetInitEntryCount(uint64_t requested_size) {
+    if(requested_size < HashTable_OA_KVL::MINIMUM_ENTRY_COUNT) {
+      requested_size = HashTable_OA_KVL::MINIMUM_ENTRY_COUNT;
+    }
+    
+    // Number of elements that could be held by one page
+    uint64_t proposed_size = HashTable_OA_KVL::PAGE_SIZE / sizeof(HashEntry);
+    if(proposed_size > requested_size) {
+      requested_size = proposed_size;
+    }
+    
+    return requested_size;
+  }
+  
+ public:
+  /*
+   * Constructor - Initialize hash table entry and all of its members
+   */
+  HashTable_OA_KVL(const KeyHashFunc &p_key_hash_obj = KeyHashFunc{},
+                   const KeyEqualityChecker &p_key_eq_obj = KeyEqualityChecker{},
+                   const LoadFactorCalculator &p_lfc = LoadFactorCalculator{},
+                   uint64_t init_entry_count = 0) :
+    key_hash_obj{p_key_hash_obj},
+    key_eq_obj{p_key_eq_obj},
+    lfc{p_lfc} {
+    // First initialize this variable to make it as reasonable as possible
+    init_entry_count = GetInitEntryCount(init_entry_count);
+                       
+    // First round it up to a power of 2 and then compute size and mask
+    SetSizeAndMask(init_entry_count);
+    
 
   }
 };
