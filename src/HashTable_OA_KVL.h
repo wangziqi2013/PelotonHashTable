@@ -68,9 +68,18 @@ class HashTable_OA_KVL {
    * If one key is mapped to more than one values then we should change the
    * strategy that values are stored, and use this class as an overflow buffer
    * to compactly store all values
+   *
+   * We choose not to use a std::vector since std::vector will cause extra
+   * allocation
    */
   class KeyValueList {
-
+    // Number of value items inside the list
+    uint32_t size;
+    // The actual capacity allocated to the list
+    uint32_t capacity;
+    
+    // The following elements are
+    ValueType data[0];
   };
   
   /*
@@ -119,6 +128,53 @@ class HashTable_OA_KVL {
     // but all values will be stored in the KeyValueList
     KeyType key;
     ValueType value;
+    
+    /*
+     * IsFree() - Returns whether the slot is currently unused
+     */
+    inline bool IsFree() const {
+      return status == StatusCode::FREE;
+    }
+    
+    /*
+     * IsDeleted() - Whether the slot is deleted
+     */
+    inline bool IsDeleted() const {
+      return status == StatusCode::DELETED;
+    }
+    
+    /*
+     * IsProbeEndForInsert() - Whether it is the end of probing
+     *                         for insert operation
+     *
+     * For insert operations, deleted entry could be inserted into
+     */
+    inline bool IsProbeEndForInsert() const {
+      return IsFree() || IsDeleted();
+    }
+    
+    /*
+     * IsProbeEndForSearch() - Whether it is the end of probing
+     *                         for search operation
+     *
+     * For search operations, deleted entry could not be counted as the
+     * end of probing
+     */
+    inline bool IsProbeEndForSearch() const {
+      return IsFree();
+    }
+    
+    /*
+     * HasSingleValue() - Whether the entry only has one value
+     *
+     * This method requires that the entry must have one or more values
+     */
+    inline bool HasSingleValue() const {
+      assert((IsFree() == false) &&
+             (IsDeleted() == false));
+             
+      return status == StatusCode::SINGLE_VALUE;
+    }
   };
 };
 
