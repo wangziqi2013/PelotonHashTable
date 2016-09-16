@@ -520,6 +520,14 @@ class HashTable_OA_KVL {
    
   /*
    * Constructor - Initialize hash table entry and all of its members
+   *
+   * The constructor takes key comparator, key hash function and load factor
+   * calculator as arguments. If not provided then they are defaulted to be
+   * the default initialized object from the functor class
+   *
+   * Also the initial number of entries in the array could be specified by the
+   * caller. If not specified then it is either set to the larger one between
+   * hardcoded minimum number of entries, or to PAGE_SIZE / sizeof(HashEntry)
    */
   HashTable_OA_KVL(const KeyHashFunc &p_key_hash_obj = KeyHashFunc{},
                    const KeyEqualityChecker &p_key_eq_obj = KeyEqualityChecker{},
@@ -538,9 +546,11 @@ class HashTable_OA_KVL {
     // Set the threshold by setting the load factor
     resize_threshold = lfc(entry_count);
     
-    // We do not call new to avoid calling the constructor for each key and
-    // value
-    // Note that sizeof() takes padding into consideration so we are OK
+    // If KeyType and ValueType have non-trivial constructors then this might
+    // take very long time
+    // In the future we might want to modify this to let the constructor be
+    // called only on demand, i.e. when the entry is inserted
+    // and destructor called when the entry is deleted
     entry_list_p = new HashEntry[entry_count];
     assert(entry_list_p != nullptr);
     
