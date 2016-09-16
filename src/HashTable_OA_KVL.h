@@ -31,9 +31,19 @@ static void dummy(const char*, ...) {}
 
 /*
  * class LoadFactorHalfFull - Compute load factor as 0.5
+ *
+ * We choose to implement the load factor as a call back function rather than
+ * a constant in order to let the user choose a more flexible strategy to
+ * adapt the table to varying workloads
  */
 class LoadFactorHalfFull {
  public:
+   
+  /*
+   * operator() - Computes the resize threshold given the current table size
+   *
+   * This will be only called during initialization and table resizing
+   */
   uint64_t operator()(uint64_t table_size) {
     return table_size >> 1;
   }
@@ -73,12 +83,15 @@ class HashTable_OA_KVL {
   
  public:
    
-  
-   
   /*
    * class SimpleInt64Hasher - Simple hash function that hashes uint64_t
    *                           into a value that are distributed evenly
    *                           in the 0 and MAX interval
+   *
+   * Note that for an open addressing hash table, simply do a reflexive mapping
+   * is not sufficient, since integer keys tend to group together in a very
+   * narrow interval, using the ineteger itself as hashed value might cause
+   * aggregation
    */
   class SimpleInt64Hasher {
    public:
@@ -189,16 +202,21 @@ class HashTable_OA_KVL {
      *                         for insert operation
      *
      * For insert operations, deleted entry could be inserted into
+     * so all status smaller than SINGLE_VALUE is considered as being
+     * eligible for insertion
      */
     inline bool IsProbeEndForInsert() const {
-      return IsFree() || IsDeleted();
+      return status < StatusCode::SINGLE_VALUE;
     }
     
     /*
      * IsValidEntry() - Whether the entry has a key and at least one value
+     *
+     * The trick here is that for all values >= SINGLE_VALUE, they indicate
+     * valid entries
      */
     inline bool IsValidEntry() const {
-      return IsProbeEndForInsert() == false;
+      return status >= StatusCode::SINGLE_VALUE;
     }
     
     /*
@@ -337,22 +355,22 @@ class HashTable_OA_KVL {
   }
   
   /*
-   * Reprobe() - Given a hash entry, reprobe them in the current array
+   * ProbeForInsert() - Given a hash value, probe it in the array and return
+   *                    the first HashEntry pointer that this hash value's
+   *                    key could be inserted into
    *
    * This function assumes that all data members have been updated to
    * reflect the new HashEntry array
-   *
-   * Also it is assumed that there is no deleted value in the current
-   * array since when this is called, the array is a new array
    */
-  void Reprobe(HasnEntry *entry_p) {
-    assert(entry_p->IsValidEntry() == true);
-    
-    uint64_t index = entry_p->hash_value & index_mask;
+  HashEntry *ProbeForInsert(uint64_t hash_value) {
+    // Compute the starting point for probing the hash table
+    uint64_t index = hash_value & index_mask;
     HashEntry *entry_p = entry_list_p + index;
     
     // Keep probing until there is a entry that is not free
-    while(entry_p->IsFree() == true) {
+    // Since we always assume the table does not become entirely full,
+    // a free slot could always be inserted
+    while(entry_p->IsProbeEndForInsert() == false) {
       entry_p++;
       index++;
       
@@ -362,6 +380,8 @@ class HashTable_OA_KVL {
         entry_p = entry_list_p;
       }
     }
+    
+    return entry_p;
   }
   
   /*
