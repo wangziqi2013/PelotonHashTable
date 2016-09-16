@@ -380,6 +380,9 @@ class HashTable_OA_KVL {
    * since wrap back is a rare event, the compiler should have this piece
    * of information, and arrange code intelligently to let the CPU
    * favor the branch that is likely to be execute, i.e. no wrapping back
+   *
+   * This function should also be inlined such that no actual pointer operation
+   * is performed
    */
   inline void GetNextEntry(HashEntry **entry_p_p, uint64_t *index_p) {
     // Increase them first, since usually we do not need a wrap back
@@ -396,22 +399,59 @@ class HashTable_OA_KVL {
   }
   
   /*
+   * GetStartEntry() - Get the starting point for probing given a key
+   */
+  inline HashEntry *GetStartEntry(const KeyType &key) {
+    return entry_list_p + (key_hash_obj(key) & index_mask);
+  }
+  
+  /*
+   * ProbeForResize() - Given a hash value, probe it in the array and return
+   *                    the first HashEntry pointer that is free
+   *
+   * Since for resizing we only consider free and non-free slots, and there
+   * is no deleted slots, probing is pretty easy
+   */
+  HashEntry *ProbeForResize(uint64_t hash_value, const KeyType &key) {
+    // Compute the starting point for probing the hash table
+    uint64_t index = hash_value & index_mask;
+    HashEntry *entry_p = entry_list_p + index;
+
+    // Keep probing until there is a entry that is not free
+    while(entry_p->IsFree() == false) {
+      GetNextEntry(&entry_p, &index);
+    }
+
+    // It could only be a free entry
+    return entry_p;
+  }
+  
+  /*
    * ProbeForInsert() - Given a hash value, probe it in the array and return
    *                    the first HashEntry pointer that this hash value's
    *                    key could be inserted into
    *
-   * This function assumes that all data members have been updated to
-   * reflect the new HashEntry array
+   * This function returns the entry iff:
+   *
+   *   1. The entry is deleted
+   *   2. The entry is free
+   *   3. The entry is neither deleted nor free, but has a key that matches
+   *      the given key
    */
-  HashEntry *ProbeForInsert(uint64_t hash_value) {
+  HashEntry *ProbeForInsert(const KeyType &key) {
     // Compute the starting point for probing the hash table
-    uint64_t index = hash_value & index_mask;
+    uint64_t index = key_hash_obj(key) & index_mask;
     HashEntry *entry_p = entry_list_p + index;
 
     // Keep probing until there is a entry that is not free
     // Since we always assume the table does not become entirely full,
     // a free slot could always be inserted
     while(entry_p->IsProbeEndForInsert() == false) {
+      // If we have found the key, then directly return
+      if(key_eq_obj(key, entry_p->key) == true) {
+        return entry_p;
+      }
+      
       GetNextEntry(&entry_p, &index);
     }
 
