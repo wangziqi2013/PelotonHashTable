@@ -256,20 +256,6 @@ class HashTable_OA_KVL {
     inline bool HasKeyValueList() const {
       return status >= StatusCode::MULTIPLE_VALUES;
     }
-    
-    /*
-     * IsProbeEndForSearchStatic() - The static version is for callbacks
-     */
-    static inline bool IsProbeEndForSearchStatic(HashEntry *entry_p) {
-      return entry_p->IsProbeEndForSearch();
-    }
-    
-    /*
-     * IsProbeEndForInsertStatic() - The static version is for callbacks
-     */
-    static inline bool IsProbeEndForInsertStatic(HashEntry *entry_p) {
-      return entry_p->IsProbeEndForInsert();
-    }
   };
   
  private:
@@ -299,79 +285,6 @@ class HashTable_OA_KVL {
   LoadFactorCalculator lfc;
   
  private:
-   
-  /*
-   * SetSizeAndMask() - Sets entry count and index mask
-   *
-   * This is only called for initialization routine, since for later grow
-   * of the table we always double the table, so the valus are easier to
-   * compute
-   */
-  void SetSizeAndMask(uint64_t requested_size) {
-    int leading_zero = __builtin_clzl(requested_size);
-    int effective_bits = 64 - leading_zero;
-    
-    // It has a 1 bit on the highest bit
-    entry_count = 0x0000000000000001 << effective_bits;
-    index_mask = entry_count - 1;
-
-    // If this happens then requested size itself is a power of 2
-    // and we just counted more than 1 bit
-    if(requested_size == (entry_count >> 1)) {
-      entry_count >>= 1;
-      index_mask >>= 1;
-    }
-    
-    return;
-  }
-  
-  /*
-   * GetInitEntryCount() - Returns the initial entry count given a requested
-   *                       size of the hash table
-   */
-  static uint64_t GetInitEntryCount(uint64_t requested_size) {
-    if(requested_size < HashTable_OA_KVL::MINIMUM_ENTRY_COUNT) {
-      requested_size = HashTable_OA_KVL::MINIMUM_ENTRY_COUNT;
-    }
-    
-    // Number of elements that could be held by one page
-    // If we could hold more items in one page then update the size
-    uint64_t proposed_size = HashTable_OA_KVL::PAGE_SIZE / sizeof(HashEntry);
-    if(proposed_size > requested_size) {
-      requested_size = proposed_size;
-    }
-
-    return requested_size;
-  }
-  
-  /*
-   * FreeKeyValueList() - Frees the key value list associated with HashEntry
-   *                      if there is one
-   *
-   * Note that we always use malloc and free for memory allocation in this
-   * class, so free() should be used
-   */
-  void FreeKeyValueList() {
-    // We use this variable as end of loop condition
-    uint64_t remaining = active_entry_count;
-    HashEntry *entry_p = entry_list_p;
-    
-    // We use this as an optimization, since as long as we have finished
-    // iterating through all valid entries
-    while(remaining > 0) {
-      if(entry_p->HasKeyValueList() == true) {
-        remaining--;
-        
-        // Free the pointer
-        free(entry_p->kv_p);
-      }
-      
-      // Always go to the next entry
-      entry_p++;
-    }
-    
-    return;
-  }
   
   /*
    * GetNextEntry() - Get the next entry
@@ -399,20 +312,13 @@ class HashTable_OA_KVL {
   }
   
   /*
-   * GetStartEntry() - Get the starting point for probing given a key
-   */
-  inline HashEntry *GetStartEntry(const KeyType &key) {
-    return entry_list_p + (key_hash_obj(key) & index_mask);
-  }
-  
-  /*
    * ProbeForResize() - Given a hash value, probe it in the array and return
    *                    the first HashEntry pointer that is free
    *
    * Since for resizing we only consider free and non-free slots, and there
    * is no deleted slots, probing is pretty easy
    */
-  HashEntry *ProbeForResize(uint64_t hash_value, const KeyType &key) {
+  HashEntry *ProbeForResize(uint64_t hash_value) {
     // Compute the starting point for probing the hash table
     uint64_t index = hash_value & index_mask;
     HashEntry *entry_p = entry_list_p + index;
@@ -461,30 +367,153 @@ class HashTable_OA_KVL {
   }
   
   /*
-   * ProbeForSearch() - Probe the array to find a slot for
+   * ProbeForSearch() - Probe the array to find the entry of given key
+   *
+   * If the entry is not found then return nullptr. If we are doing an
+   * insertion later on then a reprobe is required
    */
-  HashEntry *ProbeForSearch(uint64_t hash_value) {
-    return Probe<HashEntry::IsProbeEndForSearchStatic>(hash_value);
+  HashEntry *ProbeForSearch(const KeyType &key) {
+    // Compute the starting point for probing the hash table
+    uint64_t index = key_hash_obj(key) & index_mask;
+    HashEntry *entry_p = entry_list_p + index;
+
+    // Keep probing until there is a entry that is not free
+    // Since we always assume the table does not become entirely full,
+    // a free slot could always be inserted
+    while(entry_p->IsProbeEndForSearch() == false) {
+      // If we reach here the entry still could be a deleted entry
+      // Check for status of deletion first
+      if((entry_p->IsDeleted() == false) && \
+         (key_eq_obj(key, entry_p->key) == true)) {
+        return entry_p;
+      }
+
+      GetNextEntry(&entry_p, &index);
+    }
+
+    // There is no entry
+    return nullptr;
   }
   
   /*
    * Resize() - Double the size of the table, and do a reprobe for every
    *            existing element
+   *
+   * This function allocates a new array and frees the old array, and calls
+   * copy constructor for each valid entry remaining in the old array into
+   * the new array
    */
   void Resize() {
+    entry_count <<= 1;
+    index_mask = entry_count - 1;
+    // Use the user provided call back to compute the load factor
+    resize_threshold = lfc(resize_threshold);
     
-  }
-  
-  ValueType *GetValuePointer(const KeyType &key) {
-    if(entry_count == resize_threshold) {
-      Resize();
+    // Preserve the old entry list and allocate a new one
+    HashEntry *old_entry_list_p = entry_list_p;
+    entry_list_p = new HashEntry[entry_count];
+    assert(entry_list_p != nullptr);
+    
+    // Use this to iterate through all entries and rehash them into
+    // the new array
+    uint64_t remaining = active_entry_count;
+    HashEntry *entry_p = old_entry_list_p;
+    while(remaining > 0) {
+      if(entry_p->IsValidEntry() == true) {
+        remaining--;
+        
+        // This is the place where we insert the entry in
+        HashEntry *new_entry_p = ProbeForResize(entry_p->hash_value);
+        
+        // This calls the copy constructor for class HashEntry which is
+        // synthesized by the compiler which in turn calls the copy constructor
+        // for KeyType and ValueType
+        *entry_p = *new_entry_p;
+      }
     }
     
-    // Compute hash value and then
-    uint64_t hash_value = key_hash_obj(key);
-    uint64_t index = hash_value & index_mask;
+    // Free old list to avoid memory leak
+    delete[] old_entry_list_p;
     
-    HashEntry *entry_p = entry_list_p + index;
+    return;
+  }
+  
+  /*
+   * SetSizeAndMask() - Sets entry count and index mask
+   *
+   * This is only called for initialization routine, since for later grow
+   * of the table we always double the table, so the valus are easier to
+   * compute
+   */
+  void SetSizeAndMask(uint64_t requested_size) {
+    int leading_zero = __builtin_clzl(requested_size);
+    int effective_bits = 64 - leading_zero;
+
+    // It has a 1 bit on the highest bit
+    entry_count = 0x0000000000000001 << effective_bits;
+    index_mask = entry_count - 1;
+
+    // If this happens then requested size itself is a power of 2
+    // and we just counted more than 1 bit
+    if(requested_size == (entry_count >> 1)) {
+      entry_count >>= 1;
+      index_mask >>= 1;
+    }
+
+    return;
+  }
+
+  /*
+   * GetInitEntryCount() - Returns the initial entry count given a requested
+   *                       size of the hash table
+   */
+  static uint64_t GetInitEntryCount(uint64_t requested_size) {
+    if(requested_size < HashTable_OA_KVL::MINIMUM_ENTRY_COUNT) {
+      requested_size = HashTable_OA_KVL::MINIMUM_ENTRY_COUNT;
+    }
+
+    // Number of elements that could be held by one page
+    // If we could hold more items in one page then update the size
+    uint64_t proposed_size = HashTable_OA_KVL::PAGE_SIZE / sizeof(HashEntry);
+    if(proposed_size > requested_size) {
+      requested_size = proposed_size;
+    }
+
+    return requested_size;
+  }
+
+  /*
+   * FreeKeyValueList() - Frees the key value list associated with HashEntry
+   *                      if there is one
+   *
+   * Note that we always use operator new and operator delete for memory
+   * allocation in this class
+   */
+  void FreeKeyValueList() {
+    // We use this variable as end of loop condition
+    uint64_t remaining = active_entry_count;
+    HashEntry *entry_p = entry_list_p;
+
+    // We use this as an optimization, since as long as we have finished
+    // iterating through all valid entries
+    while(remaining > 0) {
+      // The variable counts valid entry
+      if(entry_p->IsValidEntry() == true) {
+        remaining--;
+      }
+
+      // And among all valid entries we only destroy those that have
+      // a key value list
+      if(entry_p->HasKeyValueList() == true) {
+        // Free the pointer
+        delete entry_p->kv_p;
+      }
+
+      // Always go to the next entry
+      entry_p++;
+    }
+
+    return;
   }
   
  public:
@@ -512,8 +541,7 @@ class HashTable_OA_KVL {
     // We do not call new to avoid calling the constructor for each key and
     // value
     // Note that sizeof() takes padding into consideration so we are OK
-    entry_list_p = \
-      static_cast<HashEntry *>(malloc(sizeof(HashEntry) * entry_count));
+    entry_list_p = new HashEntry[entry_count];
     assert(entry_list_p != nullptr);
     
     dbg_printf("Hash table size = %lu\n", entry_count);
@@ -531,9 +559,21 @@ class HashTable_OA_KVL {
     
     // Free the array
     assert(entry_list_p);
-    free(entry_list_p);
+    delete[] entry_list_p;
     
     return;
+  }
+  
+  void Insert(const KeyType &key, const ValueType &value) {
+    
+  }
+  
+  ValueType *GetValuePointer(const KeyType &key) {
+    if(entry_count == resize_threshold) {
+      Resize();
+      assert(entry_count < resize_threshold);
+    }
+    
   }
 };
 
