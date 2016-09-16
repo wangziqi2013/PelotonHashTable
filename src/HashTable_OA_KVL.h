@@ -33,6 +33,32 @@ template <typename KeyType,
           typename KeyHashFunc = std::hash<KeyType>,
           typename KeyEqualityChecker = std::equal_to<KeyType>>
 class HashTable_OA_KVL {
+ public:
+   
+  /*
+   * class SimpleInt64Hasher - Simple hash function that hashes uint64_t
+   *                           into a value that are distributed evenly
+   *                           in the 0 and MAX interval
+   */
+  class SimpleInt64Hasher {
+   public:
+    uint64_t operator()(uint64_t value) {
+      //
+      // The following code segment is copied from MurmurHash3, and is used
+      // as an answer on the Internet:
+      // http://stackoverflow.com/questions/5085915/what-is-the-best-hash-
+      //   function-for-uint64-t-keys-ranging-from-0-to-its-max-value
+      //
+      value ^= value >> 33;
+      value *= 0xff51afd7ed558ccd;
+      value ^= value >> 33;
+      value *= 0xc4ceb9fe1a85ec53;
+      value ^= value >> 33;
+      
+      return value;
+    }
+  };
+  
  private:
   
   /*
@@ -84,6 +110,15 @@ class HashTable_OA_KVL {
       StatusCode status;
       KeyValueList *kv_p;
     };
+    
+    uint64_t hash_value;
+
+    // The inline storage for key-value works best if one key is only
+    // mapped to one value
+    // However, if one key is mapped to multiple values, we keep the key inline
+    // but all values will be stored in the KeyValueList
+    KeyType key;
+    ValueType value;
   };
 };
 
