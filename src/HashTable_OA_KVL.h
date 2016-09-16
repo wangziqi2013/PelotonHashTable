@@ -34,8 +34,57 @@ template <typename KeyType,
           typename KeyEqualityChecker = std::equal_to<KeyType>>
 class HashTable_OA_KVL {
  private:
-  // This is the type we use for storing key value pair inside HashEntry
-  using KeyValueType = std::pair<KeyType, ValueType>;
+  
+  /*
+   * class KeyValueList - The key value list for holding hash table value
+   *                      overflows
+   *
+   * If one key is mapped to more than one values then we should change the
+   * strategy that values are stored, and use this class as an overflow buffer
+   * to compactly store all values
+   */
+  class KeyValueList {
+
+  };
+  
+  /*
+   * class HashEntry - The hash table entry whose array is maintained by the
+   *                   hash table
+   */
+  class HashEntry {
+   public:
+
+    /*
+     * enum class StatusCode - Describes the status that a HashEntry could be
+     *                         in at a time
+     *
+     * This status code will also share memory with a (<=) 64 bit pointer.
+     * Since the pointer could also be 32 bits, this variable should be used
+     * for initializing memory
+     */
+    enum class StatusCode : uint64_t {
+      FREE = 0,
+      DELETED = 1,
+      SINGLE_VALUE = 2,
+      // This is a sentinel value that are compared against for >=
+      // and if this condition is true then this entry holds multiple
+      // values in the list
+      MULTIPLE_VALUES = 3,
+    };
+    
+    /*
+     * union - This union is made anonymous to expose its members to the
+     *         outer scope
+     *
+     * It works best with 64 bit pointer width, since that case this union is
+     * fully utilized. In the case that a pointer is < 64 bit status code
+     * shall remain 64 bit
+     */
+    union {
+      StatusCode status;
+      KeyValueList *kv_p;
+    };
+  };
 };
 
 }
