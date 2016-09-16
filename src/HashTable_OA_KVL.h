@@ -337,10 +337,31 @@ class HashTable_OA_KVL {
   }
   
   /*
-   * Reprobe() - Given a hash entry, reprobe them in the given array
+   * Reprobe() - Given a hash entry, reprobe them in the current array
+   *
+   * This function assumes that all data members have been updated to
+   * reflect the new HashEntry array
+   *
+   * Also it is assumed that there is no deleted value in the current
+   * array since when this is called, the array is a new array
    */
-  void Reprobe(HasnEntry *entry_p, HashEntry *entry_list_p) {
-    assert(entry_p->IsFree() == false)
+  void Reprobe(HasnEntry *entry_p) {
+    assert(entry_p->IsValidEntry() == true);
+    
+    uint64_t index = entry_p->hash_value & index_mask;
+    HashEntry *entry_p = entry_list_p + index;
+    
+    // Keep probing until there is a entry that is not free
+    while(entry_p->IsFree() == true) {
+      entry_p++;
+      index++;
+      
+      // If the we have reached the end of the array and need to wrap back
+      if(index == entry_count) {
+        index = 0;
+        entry_p = entry_list_p;
+      }
+    }
   }
   
   /*
