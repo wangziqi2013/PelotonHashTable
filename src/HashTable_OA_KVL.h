@@ -381,6 +381,8 @@ class HashTable_OA_KVL {
       }
     }
     
+    // It is either a deleted or free entry
+    // which could be determined by only 1 instruction
     return entry_p;
   }
   
@@ -392,7 +394,7 @@ class HashTable_OA_KVL {
     
   }
   
-  Value *GetValuePointer(const KeyType &key) {
+  ValueType *GetValuePointer(const KeyType &key) {
     if(entry_count == resize_threshold) {
       Resize();
     }
