@@ -45,6 +45,11 @@ template <typename KeyType,
           typename KeyEqualityChecker = std::equal_to<KeyType>,
           typename LoadFactorCalculator = LoadFactorHalfFull>
 class HashTable_OA_KVL {
+ private:
+  // This is the minimum entry count
+  static constexpr uint64_t MINIMUM_ENTRY_COUNT = 32;
+  static constexpr uint64_t PAGE_SIZE = 4096;
+  
  public:
    
   
@@ -87,6 +92,7 @@ class HashTable_OA_KVL {
    * allocation
    */
   class KeyValueList {
+   public:
     // Number of value items inside the list
     uint32_t size;
     // The actual capacity allocated to the list
@@ -101,11 +107,6 @@ class HashTable_OA_KVL {
    *                   hash table
    */
   class HashEntry {
-   private:
-    // This is the minimum entry count
-    static constexpr uint64_t MINIMUM_ENTRY_COUNT = 32;
-    static constexpr uint64_t PAGE_SIZE = 4096;
-    
    public:
 
     /*
@@ -269,6 +270,7 @@ class HashTable_OA_KVL {
     }
     
     // Number of elements that could be held by one page
+    // If we could hold more items in one page then update the size
     uint64_t proposed_size = HashTable_OA_KVL::PAGE_SIZE / sizeof(HashEntry);
     if(proposed_size > requested_size) {
       requested_size = proposed_size;
@@ -288,13 +290,21 @@ class HashTable_OA_KVL {
     uint64_t remaining = active_entry_count;
     HashEntry *entry_p = entry_list_p;
     
+    // We use this as an optimization, since as long as we have finished
+    // iterating through all valid entries
     while(remaining > 0) {
       if(entry_p->HasKeyValueList() == true) {
         remaining--;
         
-        
+        // Free the pointer
+        free(entry_p->kv_p);
       }
+      
+      // Always go to the next entry
+      entry_p++;
     }
+    
+    return;
   }
   
  public:
