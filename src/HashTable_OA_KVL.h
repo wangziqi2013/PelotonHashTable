@@ -8,6 +8,16 @@ namespace peloton {
 namespace index {
 
 /*
+ * class LoadFactorHalfFull - Compute load factor as 0.5
+ */
+class LoadFactorHalfFull {
+ public:
+  uint64_t operator()(uint64_t table_size) {
+    return table_size >> 1;
+  }
+};
+
+/*
  * class HashTable_OA_KVL - Open addressing hash table for storing key-value
  *                          pairs that tses Key Value List for dealing with
  *                          multiple values for a single key
@@ -31,9 +41,12 @@ namespace index {
 template <typename KeyType,
           typename ValueType,
           typename KeyHashFunc = std::hash<KeyType>,
-          typename KeyEqualityChecker = std::equal_to<KeyType>>
+          typename KeyEqualityChecker = std::equal_to<KeyType>,
+          typename LoadFactorCalculator = LoadFactorHalfFull>
 class HashTable_OA_KVL {
  public:
+   
+  
    
   /*
    * class SimpleInt64Hasher - Simple hash function that hashes uint64_t
@@ -176,6 +189,35 @@ class HashTable_OA_KVL {
       return status == StatusCode::SINGLE_VALUE;
     }
   };
+  
+ private:
+
+  ///////////////////////////////////////////////////////////////////
+  // Data Member Definition
+  ///////////////////////////////////////////////////////////////////
+  
+  // This is the major data array of the hash table
+  HashEntry *entry_list_p;
+  
+  // The bit mask used to convert hash value into an index value into
+  // the hash table
+  uint64_t index_mask;
+  
+  // Number of active elements
+  uint64_t active_entry_count;
+  
+  // Total number of entries
+  uint64_t entry_count;
+  
+  // We compute threshold for next resizing, and cache it here
+  uint64_t resize_threshold;
+  
+  HashTable_OA_KVL(const KeyHashFunc &key_hash_func = KeyHashFunc{},
+                   const KeyEqualityChecker &key_eq_obj = KeyEqualityChecker{},
+                   const LoadFactorCalculator &lfc = LoadFactorCalculator{},
+                   int init_slot_count = -1) {
+
+  }
 };
 
 }
