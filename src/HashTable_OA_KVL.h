@@ -308,6 +308,7 @@ class HashTable_OA_KVL {
    * class, so free() should be used
    */
   void FreeKeyValueList() {
+    // We use this variable as end of loop condition
     uint64_t remaining = active_entry_count;
     HashEntry *entry_p = entry_list_p;
     
@@ -326,6 +327,33 @@ class HashTable_OA_KVL {
     }
     
     return;
+  }
+  
+  /*
+   * Reprobe() - Given a hash entry, reprobe them in the given array
+   */
+  void Reprobe(HasnEntry *entry_p, HashEntry *entry_list_p) {
+    assert(entry_p->IsFree() == false)
+  }
+  
+  /*
+   * Resize() - Double the size of the table, and do a reprobe for every
+   *            existing element
+   */
+  void Resize() {
+    
+  }
+  
+  Value *GetValuePointer(const KeyType &key) {
+    if(entry_count == resize_threshold) {
+      Resize();
+    }
+    
+    // Compute hash value and then
+    uint64_t hash_value = key_hash_obj(key);
+    uint64_t index = hash_value & index_mask;
+    
+    HashEntry *entry_p = entry_list_p + index;
   }
   
  public:
