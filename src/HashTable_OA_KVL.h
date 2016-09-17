@@ -52,55 +52,6 @@ class HashTable_OA_KVL {
  private:
   
   /*
-   * class Data - Explicitlly managed data wrapping class
-   *
-   * This class could not be implicitly constructed or destroyed, and we
-   * could only malloc() a chunk of memory and manually call the corresponding
-   * routine on its pointer.
-   */
-  template <typename T>
-  class Data {
-   public:
-    // Wrapped data
-    T data;
-    
-    Data() = delete;
-    Data(const Data &) = delete;
-    Data(Data &&) = delete;
-    Data &operator=(const Data &other) = delete;
-    Data &operator=(Data &&other) = delete;
-    ~Data() = delete;
-    
-    /*
-     * operator T - Type cast to its wrapped type
-     */
-    operator T&() {
-      return data;
-    }
-    
-    /*
-     * Init(const T &) - Copy-construct
-     */
-    void Init(const T &value) {
-      new (this) T{value};
-    }
-    
-    /*
-     * Init() - Explciit default construct the object
-     */
-    void Init() {
-      new (this) T{};
-    }
-    
-    /*
-     * Fini() - Explicitly destroy the data object
-     */
-    void Fini() {
-      data.~T();
-    }
-  };
-  
-  /*
    * class KeyValueList - The key value list for holding hash table value
    *                      overflows
    *
@@ -914,7 +865,7 @@ class HashTable_OA_KVL {
     * Prefix operator++() - Advances the iterator by one element
     */
    iterator &operator++() {
-     if()
+     //if()
    }
   };
 };
