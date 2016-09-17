@@ -610,7 +610,14 @@ class HashTable_OA_KVL {
    * statuc code for each entry to FREE
    */
   static HashEntry *GetHashEntryList(uint64_t entry_count) {
-
+    HashEntry *entry_list_p = \
+      static_cast<HashEntry *>(malloc(sizeof(HashEntry) * entry_count));
+      
+    for(uint64_t i = 0;i < entry_count;i++) {
+      entry_list_p[i].status = HashEntry::OpCode::FREE;
+    }
+    
+    return entry_list_p;
   }
   
   /*
