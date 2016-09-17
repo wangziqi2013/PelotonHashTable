@@ -1,6 +1,7 @@
 
 #pragma once
 
+#include <cstdio>
 #include <cassert>
 #include <utility>
 #include <functional>
@@ -814,7 +815,19 @@ class HashTable_OA_KVL {
   }
   
   /*
+   * Delete() - Removes one element with the given value
+   *
+   * Note that if there are multiple values with the same key, this
+   * routine should be called multiple times to remove all of them
+   */
+  void Delete(const KeyType &key, const ValueType &value) {
+    
+  }
+  
+  /*
    * GetValue() - Return a pointer to value and number of values
+   *
+   * The first pointer is returned as
    */
   std::pair<ValueType *, uint32_t> GetValue(const KeyType &key) {
     HashEntry *entry_p = ProbeForSearch(key);
