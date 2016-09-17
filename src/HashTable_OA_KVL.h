@@ -833,6 +833,66 @@ class HashTable_OA_KVL {
     return std::make_pair(&entry_p->value.data, 1);
   }
   
+ public:
+  
+  /*
+   * class iterator - Supports iterating on the hash table
+   *
+   * This class is non-standard iterator implementation:
+   *
+   *   1. The size of the object is larger than the size of a normal iterator
+   *   2. The ++ and -- operation is not constant time - in the worst case it
+   *      could be linear on the size of the hash table
+   *      *SO PLEASE* do not use the iterator for full scan unless it is
+   *      very necessary
+   */
+  class iterator {
+   private:
+    // Current hash entry
+    HashEntry *entry_p;
+    // Size of the key value list if there is one
+    uint32_t size;
+    // Index of the current read location
+    uint32_t index;
+    
+    /*
+     * GotoNextEntry() - Moves the cursor to the next valid entry in the
+     *                   hash table.
+     *
+     * Note that in iterator there is generally no bounds checking, and the
+     * caller is responsible for making sure it is still valid
+     *
+     * Note that even if the current entry it points to is a valid entry
+     * it still advances to the next
+     */
+    void GotoNextEntry() {
+      entry_p++;
+      while(entry_p->IsValudEntry() == false) {
+        entry_p++;
+      }
+      
+      return;
+    }
+    
+    /*
+     * Advance() - Advance the iterator by 1 element
+     *
+     * Note that if we advance to a new entry, then the index and size must
+     * also change
+     */
+    void Advance() {
+      if(index == size) {
+
+      }
+    }
+    
+   /*
+    * Prefix operator++() - Advances the iterator by one element
+    */
+   iterator &operator++() {
+     if()
+   }
+  };
 };
 
 }
