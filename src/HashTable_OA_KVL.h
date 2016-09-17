@@ -799,7 +799,7 @@ class HashTable_OA_KVL {
  public:
   
   /*
-   * class iterator - Supports iterating on the hash table
+   * class Iterator - Supports iterating on the hash table
    *
    * This class is non-standard iterator implementation:
    *
@@ -810,12 +810,21 @@ class HashTable_OA_KVL {
    *      *SO PLEASE* do not use the iterator for full scan unless it is
    *      very necessary
    */
-  class iterator {
+  class Iterator {
    private:
     // Current hash entry
     HashEntry *entry_p;
     ValueType *value_p;
     uint32_t remaining;
+    
+    /*
+     * Copy Constructor
+     */
+    Iterator(const Iterator &other) :
+      entry_p{other.entry_p},
+      value_p{other.value_p},
+      remaining{other.remaining}
+    {}
     
     /*
      * GotoNextEntry() - Moves the cursor to the next valid entry in the
@@ -870,7 +879,7 @@ class HashTable_OA_KVL {
    /*
     * Prefix operator++() - Advances the iterator by one element
     */
-   iterator &operator++() {
+   Iterator &operator++() {
      Advance();
      
      return *this;
