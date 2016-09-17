@@ -73,3 +73,13 @@ class SimpleInt64Hasher {
     return value;
   }
 };
+
+/*
+ * class ConstantZero - Returns zero for all hash requests
+ */
+class ConstantZero {
+ public:
+  uint64_t operator()(uint64_t value) {
+    return 0;
+  }
+};

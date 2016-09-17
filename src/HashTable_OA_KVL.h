@@ -194,6 +194,8 @@ class HashTable_OA_KVL {
         new_kvl_p->FillValue(i, *(data + i));
       }
       
+      dbg_printf("Resize finished\n");
+      
       return new_kvl_p;
     }
     
@@ -525,12 +527,15 @@ class HashTable_OA_KVL {
           entry_p->kv_p = kv_p;
         }
         
+        // Need to get this before increasing size
+        Data<ValueType> *ret = entry_p->kv_p->GetLastElement();
+        
         // This should be done whether it is resized or not
         entry_p->kv_p->size++;
         
         // This needs to be called no matter whether resize has been
         // called or not
-        return entry_p->kv_p->GetLastElement();
+        return ret;
       }
       
       GetNextEntry(&entry_p, &index);
