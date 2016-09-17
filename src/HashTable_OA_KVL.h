@@ -134,6 +134,7 @@ class HashTable_OA_KVL {
    public:
     // Number of value items inside the list
     uint32_t size;
+    
     // The actual capacity allocated to the list
     uint32_t capacity;
     
@@ -141,10 +142,33 @@ class HashTable_OA_KVL {
     ValueType data[0];
     
     /*
-     * Fill
+     * FillValue() - Fill value at a given index
+     *
+     * Since the constructor for values in this class is not called, we
+     * need to use placement new to call the copy constructor
      */
-    void FillValue(uint32_t index) {
+    void FillValue(uint32_t index, const ValueType &value) {
+      assert(index < size);
       
+      new (data + index) ValueType{value};
+    }
+    
+    /*
+     * DestroyAllValues() - Calls destructor for all valid value entries in
+     *                      this object
+     *
+     * Since we do not invoke destructor by operator delete, destructor must be
+     * called explicitly when this is destroyed
+     */
+    void DestroyAllValues() {
+      assert(size <= capacity);
+      
+      // Loop on all valid entries and then call destructor
+      for(uint32_t i = 0;i < size;i++) {
+        (data + i)->~ValueType();
+      }
+      
+      return;
     }
   };
   
