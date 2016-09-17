@@ -190,7 +190,7 @@ class HashTable_OA_KVL {
     enum class StatusCode : uint64_t {
       FREE = 0,
       DELETED = 1,
-      SINGLE_VALUE = 2,
+      INLINE_VALUE = 2,
       // This is a sentinel value that are compared against for >=
       // and if this condition is true then this entry holds multiple
       // values in the list
@@ -239,21 +239,21 @@ class HashTable_OA_KVL {
      *                         for insert operation
      *
      * For insert operations, deleted entry could be inserted into
-     * so all status smaller than SINGLE_VALUE is considered as being
+     * so all status smaller than INLINE_VALUE is considered as being
      * eligible for insertion
      */
     inline bool IsProbeEndForInsert() const {
-      return status < StatusCode::SINGLE_VALUE;
+      return status < StatusCode::INLINE_VALUE;
     }
     
     /*
      * IsValidEntry() - Whether the entry has a key and at least one value
      *
-     * The trick here is that for all values >= SINGLE_VALUE, they indicate
+     * The trick here is that for all values >= INLINE_VALUE, they indicate
      * valid entries
      */
     inline bool IsValidEntry() const {
-      return status >= StatusCode::SINGLE_VALUE;
+      return status >= StatusCode::INLINE_VALUE;
     }
     
     /*
@@ -265,18 +265,6 @@ class HashTable_OA_KVL {
      */
     inline bool IsProbeEndForSearch() const {
       return IsFree();
-    }
-    
-    /*
-     * HasSingleValue() - Whether the entry only has one value
-     *
-     * This method requires that the entry must have one or more values
-     */
-    inline bool HasSingleValue() const {
-      assert((IsFree() == false) &&
-             (IsDeleted() == false));
-             
-      return status == StatusCode::SINGLE_VALUE;
     }
     
     /*
@@ -295,7 +283,7 @@ class HashTable_OA_KVL {
      *
      *            1. FREE status: Ignore
      *            2. DELETED status: Ignore
-     *            3. SINGLE_VALUE: Destroy key and value
+     *            3. INLINE_VALUE: Destroy key and value
      *            4. OTHER: Destroy key
      */
     inline void Fini() {
@@ -303,7 +291,7 @@ class HashTable_OA_KVL {
         case StatusCode::FREE:
         case StatusCode::DELETED:
           break;
-        case StatusCode::SINGLE_VALUE:
+        case StatusCode::INLINE_VALUE:
           key.Fini();
           value.Fini();
         default:
@@ -327,7 +315,7 @@ class HashTable_OA_KVL {
         case StatusCode::FREE:
         case StatusCode::DELETED:
           break;
-        case StatusCode::SINGLE_VALUE:
+        case StatusCode::INLINE_VALUE:
           other_p->key.Init(key);
           other_p->value.Init(value);
         default:
@@ -499,7 +487,7 @@ class HashTable_OA_KVL {
     active_entry_count++;
 
     // Change the status first
-    entry_p->status = HashEntry::StatusCode::SINGLE_VALUE;
+    entry_p->status = HashEntry::StatusCode::INLINE_VALUE;
     
     // Then fill in hash and key
     // We leave the value to be filled by the caller
@@ -853,11 +841,18 @@ class HashTable_OA_KVL {
      * Advance() - Advance the iterator by 1 element
      *
      * Note that if we advance to a new entry, then the index and size must
-     * also change
+     * also change accordingly
      */
     void Advance() {
+      // Move index in the current bucket to the next value
+      index++;
+      
       if(index == size) {
-
+        GotoNextEntry();
+        if(entry_p->HasKeyValueList() == false) {
+          size = 1;
+          index = 0;
+        }
       }
     }
     
