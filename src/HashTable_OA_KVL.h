@@ -880,6 +880,26 @@ class HashTable_OA_KVL {
     return;
   }
   
+  /*
+   * GetValue() - Return a pointer to value and number of values
+   */
+  std::pair<ValueType *, uint32_t> GetValue(const KeyType &key) {
+    HashEntry *entry_p = ProbeForSearch(key);
+    
+    // There could be three results:
+    //   1. Key not found, return nullptr and value count = 0
+    //   2. Key found with > 1 values, return pointer to starting of
+    //      the value type array
+    //   3. There is only 1 value, retuen the inlined value object
+    if(entry_p == nullptr) {
+      return std::make_pair(nullptr, 0);
+    } else if(entry_p->HasKeyValueList() == true) {
+      return std::make_pair(&entry_p->kv_p->data[0].data, entry_p->kv_p->size);
+    }
+    
+    return std::make_pair(&entry_p->value.data, 1);
+  }
+  
 };
 
 }
