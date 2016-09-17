@@ -823,8 +823,16 @@ class HashTable_OA_KVL {
    * Note that if there are multiple values with the same key, this
    * routine should be called multiple times to remove all of them
    */
-  void Delete(const KeyType &key, const ValueType &value) {
+  bool Delete(const KeyType &key, const ValueType &value) {
+    HashEntry *entry_p = ProbeForSearch(key);
+    if(entry_p == nullptr) {
+      return false;
+    }
     
+    // This is the easy case: there is no key value list
+    if(entry_p->HasKeyValueList() == false) {
+      //if()
+    }
   }
   
   /*
@@ -848,7 +856,6 @@ class HashTable_OA_KVL {
     
     return std::make_pair(&entry_p->value.data, 1);
   }
-  
 };
 
 }
