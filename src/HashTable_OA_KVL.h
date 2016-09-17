@@ -84,7 +84,13 @@ class HashTable_OA_KVL {
  private:
   // This is the minimum entry count
   static constexpr uint64_t MINIMUM_ENTRY_COUNT = 32;
+  
+  // Size of a VM page used to estimate initial number of entries in the
+  // hash table
   static constexpr uint64_t PAGE_SIZE = 4096;
+  
+  // Number of slots in a KeyValueList when first allocated
+  static constexpr uint32_t KVL_INIT_VALUE_COUNT = 4;
   
  public:
    
@@ -218,6 +224,55 @@ class HashTable_OA_KVL {
       }
       
       return;
+    }
+
+    /*
+     * GetResized() - Double the size of the current instance and return
+     *
+     * This function returns a pointer to the new instance initialized from
+     * the current one with its size doubled without freeing the current one
+     */
+    KeyValueList *GetResized() {
+      // This must be called with size == capacity
+      assert(size == capacity);
+      
+      // Malloc a new instance
+      KeyValueList *new_kvl_p = \
+        static_cast<KeyValueList *>(
+          malloc(KeyValueList::GetAllocSize(capacity << 1)));
+      assert(new_kvl_p != nullptr);
+          
+      // Initialize header
+      new_kvl_p->size = size;
+      new_kvl_p->capacity = capacity << 1;
+      
+      // Next initialize value entries
+      for(uint32_t i = 0;i < size;i++) {
+        // Explicitly call its copy constructor
+        new_kvl_p->FillValue(i, *(data + i));
+      }
+      
+      return new_kvl_p;
+    }
+    
+    /*
+     * GetAllocSize() - Static function to compute the size of a kv list
+     *                  instance with a certain number of items
+     */
+    static size_t GetAllocSize(uint32_t data_count) {
+      return sizeof(KeyValueList) + data_count * sizeof(Data<ValueType>);
+    }
+    
+    /*
+     * GetNew() - Return a newly constructed list without any initialization
+     */
+    static KeyValueList *GetNew() {
+      KeyValueList *kvl_p = static_cast<KeyValueList *>(
+        malloc(KeyValueList::GetAllocSize(KVL_INIT_VALUE_COUNT)));
+        
+      kvl_p->capacity = KVL_INIT_VALUE_COUNT;
+      
+      return kvl_p;
     }
   };
   
@@ -446,19 +501,16 @@ class HashTable_OA_KVL {
       // If we have found the key, then directly return
       if(key_eq_obj(key, entry_p->key) == true) {
         if(entry_p->HasKeyValueList() == false) {
-          KeyValueList *kv_p = \
-            static_cast<KeyValueList *>(malloc(sizeof(KeyValueList) + \
-                                               sizeof(ValueType) * \
-                                                 KVL_INIT_VALUE_COUNT));
+          KeyValueList *kv_p = KeyValueList::GetNew();
+          assert(kv_p != nullptr);
 
+          // Hook the pointer to the HashEntry
+          entry_p->kv_p = kv_p;
+          
           // Initialize its header
           // Size is 2 since we copy the previous one into it and then
           // another one will be inserted
-          kv_p->capacity = KVL_INIT_VALUE_COUNT;
           kv_p->size = 2;
-          
-          // Hook the pointer to the HashEntry
-          entry_p->kv_p = kv_p;
           
           // Construct in-place
           kv_p->FillValue(0, entry_p->value);
