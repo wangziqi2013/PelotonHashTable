@@ -884,6 +884,24 @@ class HashTable_OA_KVL {
      
      return *this;
    }
+   
+   /*
+    * Postfix operator++() - Advances the iterator by one element
+    *                        and return the value before ++ operation
+    *
+    * Note that this operation is slower than the prefix++ since it copy
+    * constructs an instance of the value each time it is called
+    */
+   Iterator operator++(int) {
+      // Copy construct one
+      // Note that this operation is pretty expensive
+      // so use prefix ++ as often as possible
+      Iterator ret = *this;
+      
+      Advance();
+      
+      return ret;
+   }
   };
 };
 
