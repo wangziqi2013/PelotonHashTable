@@ -407,6 +407,53 @@ class HashTable_OA_KVL {
     inline bool HasKeyValueList() const {
       return status >= StatusCode::MULTIPLE_VALUES;
     }
+    
+    /*
+     * Fini() - Destroy key AND/OR value object depending on the current
+     *          status of the entry
+     *
+     *            1. FREE status: Ignore
+     *            2. DELETED status: Ignore
+     *            3. SINGLE_VALUE: Destroy key and value
+     *            4. OTHER: Destroy key
+     */
+    inline void Fini() {
+      switch(status) {
+        case StatusCode::FREE:
+        case StatusCode::DELETED:
+          break;
+        case StatusCode::SINGLE_VALUE:
+          key.Fini();
+          value.Fini();
+        default:
+          key.Fini();
+      }
+      
+      return;
+    }
+    
+    /*
+     * CopyTo() - Copy the current entry into another entry
+     *
+     * This function obeys a similar rule as destroying the object
+     */
+    inline void CopyTo(HashEntry *other_p) {
+      other_p->status = status;
+      other_p->hash_value = hash_value;
+      
+      switch(status) {
+        case StatusCode::FREE:
+        case StatusCode::DELETED:
+          break;
+        case StatusCode::SINGLE_VALUE:
+          other_p->key.Init(key);
+          other_p->Value.Init(value);
+        default:
+          other_p->key.Init(key);
+      }
+
+      return;
+    }
   };
   
  private:
@@ -603,13 +650,13 @@ class HashTable_OA_KVL {
   }
   
   /*
-   * GetHashEntryList() - Allocates a hash entry list given the number of
-   *                      HashEntry objects
+   * GetHashEntryListStatic() - Allocates a hash entry list given the number of
+   *                            HashEntry objects
    *
    * This will first call malloc() to initialize memory and then initialize
    * statuc code for each entry to FREE
    */
-  static HashEntry *GetHashEntryList(uint64_t entry_count) {
+  static HashEntry *GetHashEntryListStatic(uint64_t entry_count) {
     HashEntry *entry_list_p = \
       static_cast<HashEntry *>(malloc(sizeof(HashEntry) * entry_count));
       
@@ -636,7 +683,9 @@ class HashTable_OA_KVL {
     
     // Preserve the old entry list and allocate a new one
     HashEntry *old_entry_list_p = entry_list_p;
-    entry_list_p = new HashEntry[entry_count];
+    
+    // This will initialize status code for each entry
+    entry_list_p = HashTable_OA_KVL::GetHashEntryListStatic(entry_count);
     assert(entry_list_p != nullptr);
     
     // Use this to iterate through all entries and rehash them into
@@ -650,15 +699,17 @@ class HashTable_OA_KVL {
         // This is the place where we insert the entry in
         HashEntry *new_entry_p = ProbeForResize(entry_p->hash_value);
         
-        // This calls the copy constructor for class HashEntry which is
-        // synthesized by the compiler which in turn calls the copy constructor
-        // for KeyType and ValueType
-        *entry_p = *new_entry_p;
+        // This calls the copy construct for KeyType and ValueType
+        // explicitly
+        entry_p->CopyTo(new_entry_p);
+        
+        // And then call destructor explicitly
+        entry_p->Fini();
       }
     }
     
     // Free old list to avoid memory leak
-    delete[] old_entry_list_p;
+    free(old_entry_list_p);
     
     return;
   }
