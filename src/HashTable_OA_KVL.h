@@ -120,6 +120,55 @@ class HashTable_OA_KVL {
  private:
   
   /*
+   * class Data - Explicitlly managed data wrapping class
+   *
+   * This class could not be implicitly constructed or destroyed, and we
+   * could only malloc() a chunk of memory and manually call the corresponding
+   * routine on its pointer.
+   */
+  template <typename T>
+  class Data {
+   public:
+    // Wrapped data
+    T data;
+    
+    Data() = delete;
+    Data(const Data &) = delete;
+    Data(Data &&) = delete;
+    Data &operator=(const Data &other) = delete;
+    Data &operator=(Data &&other) = delete;
+    ~Data() = delete;
+    
+    /*
+     * operator T - Type cast to its wrapped type
+     */
+    operator T&() const {
+      return data;
+    }
+    
+    /*
+     * Init(const T &) - Copy-construct
+     */
+    void Init(const T &value) {
+      new (this) T{T};
+    }
+    
+    /*
+     * Init() - Explciit default construct the object
+     */
+    void Init() {
+      new (this) T{};
+    }
+    
+    /*
+     * Fini() - Explicitly destroy the data object
+     */
+    void Fini() {
+      data.~T();
+    }
+  };
+  
+  /*
    * class KeyValueList - The key value list for holding hash table value
    *                      overflows
    *
@@ -139,7 +188,7 @@ class HashTable_OA_KVL {
     uint32_t capacity;
     
     // The following elements are
-    ValueType data[0];
+    Data<ValueType> data[0];
     
     /*
      * FillValue() - Fill value at a given index
@@ -150,7 +199,7 @@ class HashTable_OA_KVL {
     void FillValue(uint32_t index, const ValueType &value) {
       assert(index < size);
       
-      new (data + index) ValueType{value};
+      new (data + index)->Init(value);
     }
     
     /*
@@ -165,7 +214,7 @@ class HashTable_OA_KVL {
       
       // Loop on all valid entries and then call destructor
       for(uint32_t i = 0;i < size;i++) {
-        (data + i)->~ValueType();
+        (data + i)->Fini();
       }
       
       return;
@@ -216,8 +265,9 @@ class HashTable_OA_KVL {
     // mapped to one value
     // However, if one key is mapped to multiple values, we keep the key inline
     // but all values will be stored in the KeyValueList
-    KeyType key;
-    ValueType value;
+    // Also these two will cause constructor to fail
+    Data<KeyType> key;
+    Data<ValueType> value;
     
     /*
      * IsFree() - Returns whether the slot is currently unused
@@ -410,11 +460,15 @@ class HashTable_OA_KVL {
           // Hook the pointer to the HashEntry
           entry_p->kv_p = kv_p;
           
-          // Use the entry's value to copy construct KeyValueList's value
-          new (entry_p->kv_p->data) ValueType{entry_p->value};
-          // Destroy the previous value stored in the entry since it has been
-          // copied into KVL
-          entry_p->value.~ValueType();
+          // Construct in-place
+          kv_p->FillValue(0, entry_p->value);
+          
+          // We know this value object is valid, and now destroy it since
+          // it has been copied into the key value list
+          entry_p->DestroyValue();
+        } else if() {
+          // If the size equals capacity then the kv list is full
+          // and we should extend the value list
         }
         
         // Return the second element for inserting new values
