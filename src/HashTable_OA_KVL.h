@@ -197,6 +197,21 @@ class HashTable_OA_KVL {
     Data<ValueType> data[0];
     
     /*
+     * IsFull() - Return whether the key value list is full and needs
+     *            a resize
+     */
+    bool IsFull() const {
+      return size == capacity;
+    }
+    
+    /*
+     * GetLastElement() - Return a pointer to the last element in this list
+     */
+    Data<ValueType> *GetLastElement() {
+      return data + size;
+    }
+    
+    /*
      * FillValue() - Fill value at a given index
      *
      * Since the constructor for values in this class is not called, we
@@ -489,7 +504,7 @@ class HashTable_OA_KVL {
    * For 3.1 the KVL is allocated and the current inline value
    * is copy constructed onto that list, and the current value is destroyed
    */
-  ValueType *ProbeForInsert(const KeyType &key) {
+  Data<ValueType> *ProbeForInsert(const KeyType &key) {
     // Compute the starting point for probing the hash table
     uint64_t index = key_hash_obj(key) & index_mask;
     HashEntry *entry_p = entry_list_p + index;
@@ -517,18 +532,32 @@ class HashTable_OA_KVL {
           
           // We know this value object is valid, and now destroy it since
           // it has been copied into the key value list
-          entry_p->DestroyValue();
-        } else if() {
+          entry_p->value.Fini();
+          
+          // Return the second element for inserting new values
+          return kv_p->data + 1;
+        } else if(entry_p->kv_p->IsFull()) {
           // If the size equals capacity then the kv list is full
           // and we should extend the value list
+          KeyValueList *kv_p = entry_p->kv_p->GetResized();
+          
+          // Call destructor explicitly for all existing values
+          // after we have copy constructed them inside the new array
+          entry_p->kv_p->DestroyAllValues();
+          
+          free(entry_p->kv_p);
+          entry_p->kv_p = kv_p;
         }
         
-        // Return the second element for inserting new values
-        return kv_p->data + 1;
+        // This needs to be called no matter whether resize has been
+        // called or not
+        return entry_p->kv_p->GetLastElement();
       }
       
       GetNextEntry(&entry_p, &index);
     }
+
+    // After this pointer we know the key and values are not initialized
 
     // Change the status first
     entry_p->status = HashEntry::StatusCode::SINGLE_VALUE;
@@ -536,7 +565,8 @@ class HashTable_OA_KVL {
     // Then fill in hash and key
     // We leave the value to be filled by the caller
     entry_p->hash_value = hash_value;
-    entry_p->key = key;
+    
+    entry_p->key>Init(key);
 
     // It is either a deleted or free entry
     // which could be determined by only 1 instruction
@@ -570,6 +600,17 @@ class HashTable_OA_KVL {
 
     // There is no entry
     return nullptr;
+  }
+  
+  /*
+   * GetHashEntryList() - Allocates a hash entry list given the number of
+   *                      HashEntry objects
+   *
+   * This will first call malloc() to initialize memory and then initialize
+   * statuc code for each entry to FREE
+   */
+  static HashEntry *GetHashEntryList(uint64_t entry_count) {
+
   }
   
   /*
