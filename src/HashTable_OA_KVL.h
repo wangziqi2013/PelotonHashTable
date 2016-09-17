@@ -148,7 +148,7 @@ class HashTable_OA_KVL {
     /*
      * operator T - Type cast to its wrapped type
      */
-    operator T&() const {
+    operator T&() {
       return data;
     }
     
@@ -450,7 +450,7 @@ class HashTable_OA_KVL {
           break;
         case StatusCode::SINGLE_VALUE:
           other_p->key.Init(key);
-          other_p->Value.Init(value);
+          other_p->value.Init(value);
         default:
           other_p->key.Init(key);
       }
@@ -600,6 +600,9 @@ class HashTable_OA_KVL {
           entry_p->kv_p = kv_p;
         }
         
+        // This should be done whether it is resized or not
+        entry_p->kv_p->size++;
+        
         // This needs to be called no matter whether resize has been
         // called or not
         return entry_p->kv_p->GetLastElement();
@@ -617,7 +620,7 @@ class HashTable_OA_KVL {
     // We leave the value to be filled by the caller
     entry_p->hash_value = hash_value;
     
-    entry_p->key>Init(key);
+    entry_p->key.Init(key);
 
     // It is either a deleted or free entry
     // which could be determined by only 1 instruction
