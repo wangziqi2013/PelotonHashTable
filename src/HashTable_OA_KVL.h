@@ -156,7 +156,7 @@ class HashTable_OA_KVL {
      * Init(const T &) - Copy-construct
      */
     void Init(const T &value) {
-      new (this) T{T};
+      new (this) T{value};
     }
     
     /*
@@ -220,7 +220,9 @@ class HashTable_OA_KVL {
     void FillValue(uint32_t index, const ValueType &value) {
       assert(index < size);
       
-      new (data + index)->Init(value);
+      (data + index)->Init(value);
+      
+      return;
     }
     
     /*
@@ -554,7 +556,8 @@ class HashTable_OA_KVL {
    */
   Data<ValueType> *ProbeForInsert(const KeyType &key) {
     // Compute the starting point for probing the hash table
-    uint64_t index = key_hash_obj(key) & index_mask;
+    uint64_t hash_value = key_hash_obj(key);
+    uint64_t index = hash_value & index_mask;
     HashEntry *entry_p = entry_list_p + index;
 
     // Keep probing until there is a entry that is not free
@@ -662,7 +665,7 @@ class HashTable_OA_KVL {
       static_cast<HashEntry *>(malloc(sizeof(HashEntry) * entry_count));
       
     for(uint64_t i = 0;i < entry_count;i++) {
-      entry_list_p[i].status = HashEntry::OpCode::FREE;
+      entry_list_p[i].status = HashEntry::StatusCode::FREE;
     }
     
     return entry_list_p;
@@ -760,11 +763,11 @@ class HashTable_OA_KVL {
   }
 
   /*
-   * FreeAllHashEntries() - Frees the key value list associated with HashEntry
-   *                        if there is one
+   * FreeAllHashEntries() - Frees the entire HashEntry array's content
    *
-   * Note that we always use operator new and operator delete for memory
-   * allocation in this class
+   * This function first frees key and value objects stored inside each
+   * HashEntry according to its current status, and then destroies its
+   * key value list if it has one
    */
   void FreeAllHashEntries() {
     // We use this variable as end of loop condition
@@ -784,6 +787,8 @@ class HashTable_OA_KVL {
 
       // And among all valid entries we only destroy those that have
       // a key value list
+      // This will in turn destroy all values manually inside the key value
+      // list's value array
       if(entry_p->HasKeyValueList() == true) {
         entry_p->kv_p->DestroyAllValues();
       }
