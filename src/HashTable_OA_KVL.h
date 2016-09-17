@@ -804,6 +804,7 @@ class HashTable_OA_KVL {
    * This class is non-standard iterator implementation:
    *
    *   1. The size of the object is larger than the size of a normal iterator
+   *      (8 bytes)
    *   2. The ++ and -- operation is not constant time - in the worst case it
    *      could be linear on the size of the hash table
    *      *SO PLEASE* do not use the iterator for full scan unless it is
@@ -813,10 +814,8 @@ class HashTable_OA_KVL {
    private:
     // Current hash entry
     HashEntry *entry_p;
-    // Size of the key value list if there is one
-    uint32_t size;
-    // Index of the current read location
-    uint32_t index;
+    ValueType *value_p;
+    uint32_t remaining;
     
     /*
      * GotoNextEntry() - Moves the cursor to the next valid entry in the
@@ -845,22 +844,36 @@ class HashTable_OA_KVL {
      */
     void Advance() {
       // Move index in the current bucket to the next value
-      index++;
+      remaining--;
+      value_p++;
       
-      if(index == size) {
+      // If we have reached the end of the current value list
+      // which happens everytime for a single map
+      if(remaining == 0) {
         GotoNextEntry();
+        
         if(entry_p->HasKeyValueList() == false) {
-          size = 1;
-          index = 0;
+          // Special case: inlined value storage
+          // just direct the pointer to the inlined value
+          remaining = 1;
+          value_p = &entry_p->value.data;
+        } else {
+          // Then we iterate through the value list
+          remaining = entry_p->kv_p->size;
+          value_p = &entry_p->kv_p->data[0].data;
         }
       }
+      
+      return;
     }
     
    /*
     * Prefix operator++() - Advances the iterator by one element
     */
    iterator &operator++() {
-     //if()
+     Advance();
+     
+     return *this;
    }
   };
 };
