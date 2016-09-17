@@ -818,15 +818,6 @@ class HashTable_OA_KVL {
     uint32_t remaining;
     
     /*
-     * Copy Constructor
-     */
-    Iterator(const Iterator &other) :
-      entry_p{other.entry_p},
-      value_p{other.value_p},
-      remaining{other.remaining}
-    {}
-    
-    /*
      * GotoNextEntry() - Moves the cursor to the next valid entry in the
      *                   hash table.
      *
@@ -876,6 +867,39 @@ class HashTable_OA_KVL {
       return;
     }
     
+   public:
+
+    /*
+     * Constructor
+     */
+    Iterator(HashEntry *p_entry_p,
+             ValueType *p_value_p,
+             uint32_t p_remaining) :
+      entry_p{p_entry_p},
+      value_p{p_value_p},
+      remaining{p_remaining}
+    {}
+    
+    /*
+     * Copy Constructor
+     */
+    Iterator(const Iterator &other) :
+      entry_p{other.entry_p},
+      value_p{other.value_p},
+      remaining{other.remaining}
+    {}
+    
+    /*
+     * operator=() - Assignment operator
+     */
+    Iterator &operator=(const Iterator &other) {
+      entry_p = other.entry_p;
+      value_p = other.value_p;
+      remaining = other.remaining;
+      
+      return;
+    }
+
    /*
     * Prefix operator++() - Advances the iterator by one element
     */
@@ -901,6 +925,17 @@ class HashTable_OA_KVL {
       Advance();
       
       return ret;
+   }
+   
+   /*
+    * operator==() - Compares two iterators
+    *
+    * Since "remaining" and value_p actually refers to the same thing, we only
+    * compare "remaining"
+    */
+   bool operator==(const Iterator &other) const {
+     return (entry_p == other.entry_p) && \
+            (remaining == other.remaining);
    }
   };
 };
