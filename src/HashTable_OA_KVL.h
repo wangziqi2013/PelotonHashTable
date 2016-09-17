@@ -438,6 +438,7 @@ class HashTable_OA_KVL {
      * This function obeys a similar rule as destroying the object
      */
     inline void CopyTo(HashEntry *other_p) {
+      // If this is a pointer then the pointer is copied
       other_p->status = status;
       other_p->hash_value = hash_value;
       
@@ -703,7 +704,7 @@ class HashTable_OA_KVL {
         // explicitly
         entry_p->CopyTo(new_entry_p);
         
-        // And then call destructor explicitly
+        // And then call destructor explicitly to destroy key AND/OR value
         entry_p->Fini();
       }
     }
@@ -759,13 +760,13 @@ class HashTable_OA_KVL {
   }
 
   /*
-   * FreeKeyValueList() - Frees the key value list associated with HashEntry
-   *                      if there is one
+   * FreeAllHashEntries() - Frees the key value list associated with HashEntry
+   *                        if there is one
    *
    * Note that we always use operator new and operator delete for memory
    * allocation in this class
    */
-  void FreeKeyValueList() {
+  void FreeAllHashEntries() {
     // We use this variable as end of loop condition
     uint64_t remaining = active_entry_count;
     HashEntry *entry_p = entry_list_p;
@@ -776,13 +777,15 @@ class HashTable_OA_KVL {
       // The variable counts valid entry
       if(entry_p->IsValidEntry() == true) {
         remaining--;
+        
+        // Destroy key and value but not the kv list
+        entry_p->Fini();
       }
 
       // And among all valid entries we only destroy those that have
       // a key value list
       if(entry_p->HasKeyValueList() == true) {
-        // Free the pointer
-        delete entry_p->kv_p;
+        entry_p->kv_p->DestroyAllValues();
       }
 
       // Always go to the next entry
@@ -822,12 +825,9 @@ class HashTable_OA_KVL {
     // Set the threshold by setting the load factor
     resize_threshold = lfc(entry_count);
     
-    // If KeyType and ValueType have non-trivial constructors then this might
-    // take very long time
-    // In the future we might want to modify this to let the constructor be
-    // called only on demand, i.e. when the entry is inserted
-    // and destructor called when the entry is deleted
-    entry_list_p = new HashEntry[entry_count];
+    // This does not call any constructor of any kind, and we only
+    // initialize on demand
+    entry_list_p = GetHashEntryListStatic(entry_count);
     assert(entry_list_p != nullptr);
     
     dbg_printf("Hash table size = %lu\n", entry_count);
@@ -843,12 +843,12 @@ class HashTable_OA_KVL {
    * their KeyValueList if there is one
    */
   ~HashTable_OA_KVL() {
-    // Free all key value list first
-    FreeKeyValueList();
+    // Free all key, value and key value list
+    FreeAllHashEntries();
     
     // Free the array
     assert(entry_list_p);
-    delete[] entry_list_p;
+    free(entry_list_p);
     
     return;
   }
