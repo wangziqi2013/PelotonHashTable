@@ -292,8 +292,8 @@ class HashTable_OA_KVL {
         case StatusCode::DELETED:
           break;
         case StatusCode::INLINE_VALUE:
-          key.Fini();
           value.Fini();
+          // FALL THROUGH
         default:
           key.Fini();
       }
@@ -316,8 +316,8 @@ class HashTable_OA_KVL {
         case StatusCode::DELETED:
           break;
         case StatusCode::INLINE_VALUE:
-          other_p->key.Init(key);
           other_p->value.Init(value);
+          // FALL THROUGH
         default:
           other_p->key.Init(key);
       }
@@ -534,15 +534,26 @@ class HashTable_OA_KVL {
    *                            HashEntry objects
    *
    * This will first call malloc() to initialize memory and then initialize
-   * statuc code for each entry to FREE
+   * status code for each entry to FREE
+   *
+   * Note that this function allocates a chunk of memory of entry_count +£±
+   * entries, in a sense that we use the last entry as a sentinel to support
+   * iterating through the entire hash table, i.e. the iterator must stop on
+   * the sentinel entry (so it is initialized to INLINE_VALUE)
    */
   static HashEntry *GetHashEntryListStatic(uint64_t entry_count) {
     HashEntry *entry_list_p = \
-      static_cast<HashEntry *>(malloc(sizeof(HashEntry) * entry_count));
+      static_cast<HashEntry *>(malloc(sizeof(HashEntry) * (1 + entry_count)));
       
     for(uint64_t i = 0;i < entry_count;i++) {
       entry_list_p[i].status = HashEntry::StatusCode::FREE;
     }
+    
+    // This will be the entry pointed to by the end() iterator
+    // and also it stops iteration
+    // "remaining" will be set to 1 when iterator hits this entry
+    // so we know comparison between them yields true
+    entry_list_p[entry_count].status = HashEntry::StatusCode::INLINE_VALUE;
     
     return entry_list_p;
   }
@@ -558,8 +569,9 @@ class HashTable_OA_KVL {
   void Resize() {
     entry_count <<= 1;
     index_mask = entry_count - 1;
+    
     // Use the user provided call back to compute the load factor
-    resize_threshold = lfc(resize_threshold);
+    resize_threshold = lfc(entry_count);
     
     // Preserve the old entry list and allocate a new one
     HashEntry *old_entry_list_p = entry_list_p;
