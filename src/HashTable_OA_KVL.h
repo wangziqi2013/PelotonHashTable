@@ -544,13 +544,16 @@ class HashTable_OA_KVL {
 
     // After this pointer we know the key and values are not initialized
 
+    // This is important!!!
+    active_entry_count++;
+
     // Change the status first
     entry_p->status = HashEntry::StatusCode::SINGLE_VALUE;
     
     // Then fill in hash and key
     // We leave the value to be filled by the caller
     entry_p->hash_value = hash_value;
-    
+
     entry_p->key.Init(key);
 
     // It is either a deleted or free entry
