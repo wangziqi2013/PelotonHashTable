@@ -139,6 +139,13 @@ class HashTable_OA_KVL {
     
     // The following elements are
     ValueType data[0];
+    
+    /*
+     * Fill
+     */
+    void FillValue(uint32_t index) {
+      
+    }
   };
   
   /*
@@ -334,17 +341,26 @@ class HashTable_OA_KVL {
   
   /*
    * ProbeForInsert() - Given a hash value, probe it in the array and return
-   *                    the first HashEntry pointer that this hash value's
-   *                    key could be inserted into
+   *                    the first HashEntry's ValueType pointer that this hash 
+   *                    value's key could be inserted into
    *
-   * This function returns the entry iff:
+   * This function returns the value type pointer iff:
    *
    *   1. The entry is deleted
    *   2. The entry is free
    *   3. The entry is neither deleted nor free, but has a key that matches
    *      the given key
+   *     3.1 The HashEntry does not have a key value list
+   *     3.2 The HashEntry has a key value list
+   *
+   * In the case of either 1 or 2, the hash value and key is filled in
+   * automatically by this function since this function is only called for
+   * inserting a new key
+   *
+   * For 3.1 the KVL is allocated and the current inline value
+   * is copy constructed onto that list, and the current value is destroyed
    */
-  HashEntry *ProbeForInsert(const KeyType &key) {
+  ValueType *ProbeForInsert(const KeyType &key) {
     // Compute the starting point for probing the hash table
     uint64_t index = key_hash_obj(key) & index_mask;
     HashEntry *entry_p = entry_list_p + index;
@@ -355,15 +371,46 @@ class HashTable_OA_KVL {
     while(entry_p->IsProbeEndForInsert() == false) {
       // If we have found the key, then directly return
       if(key_eq_obj(key, entry_p->key) == true) {
-        return entry_p;
+        if(entry_p->HasKeyValueList() == false) {
+          KeyValueList *kv_p = \
+            static_cast<KeyValueList *>(malloc(sizeof(KeyValueList) + \
+                                               sizeof(ValueType) * \
+                                                 KVL_INIT_VALUE_COUNT));
+
+          // Initialize its header
+          // Size is 2 since we copy the previous one into it and then
+          // another one will be inserted
+          kv_p->capacity = KVL_INIT_VALUE_COUNT;
+          kv_p->size = 2;
+          
+          // Hook the pointer to the HashEntry
+          entry_p->kv_p = kv_p;
+          
+          // Use the entry's value to copy construct KeyValueList's value
+          new (entry_p->kv_p->data) ValueType{entry_p->value};
+          // Destroy the previous value stored in the entry since it has been
+          // copied into KVL
+          entry_p->value.~ValueType();
+        }
+        
+        // Return the second element for inserting new values
+        return kv_p->data + 1;
       }
       
       GetNextEntry(&entry_p, &index);
     }
 
+    // Change the status first
+    entry_p->status = HashEntry::StatusCode::SINGLE_VALUE;
+    
+    // Then fill in hash and key
+    // We leave the value to be filled by the caller
+    entry_p->hash_value = hash_value;
+    entry_p->key = key;
+
     // It is either a deleted or free entry
     // which could be determined by only 1 instruction
-    return entry_p;
+    return &entry_p->value;
   }
   
   /*
@@ -562,6 +609,9 @@ class HashTable_OA_KVL {
   
   /*
    * Destructor - Frees all memory, including HashEntry array and KeyValueList
+   *
+   * This functions first traverses all entries to find valid ones, and frees
+   * their KeyValueList if there is one
    */
   ~HashTable_OA_KVL() {
     // Free all key value list first
@@ -574,17 +624,24 @@ class HashTable_OA_KVL {
     return;
   }
   
+  /*
+   * Insert() - Inserts a value into the hash table
+   *
+   * The key and value will be copy-constructed into the table
+   */
   void Insert(const KeyType &key, const ValueType &value) {
-    
-  }
-  
-  ValueType *GetValuePointer(const KeyType &key) {
     if(entry_count == resize_threshold) {
       Resize();
+      // This must hold true for any load factor
       assert(entry_count < resize_threshold);
     }
     
+    // This function fills in hash value and key and chahges the
+    // status code automatically if the entry was free or deleted
+    HashEntry *entry_p = ProbeForInsert(key);
+    assert(entry_p->IsValidEntry() == true);
   }
+  
 };
 
 }
