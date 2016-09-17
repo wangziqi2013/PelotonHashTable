@@ -872,8 +872,12 @@ class HashTable_OA_KVL {
     
     // This function fills in hash value and key and chahges the
     // status code automatically if the entry was free or deleted
-    HashEntry *entry_p = ProbeForInsert(key);
-    assert(entry_p->IsValidEntry() == true);
+    // and it returns the pointer to the place where new value should
+    // be inserted
+    Data<ValueType> *value_p = ProbeForInsert(key);
+    value_p->Init(value);
+    
+    return;
   }
   
 };
