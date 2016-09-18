@@ -5,6 +5,8 @@
 #include <cassert>
 #include <utility>
 #include <functional>
+#include <type_traits>
+#include <cstring>
 
 namespace peloton {
 namespace index {
@@ -304,22 +306,32 @@ class HashTable_OA_KVL {
     /*
      * CopyTo() - Copy the current entry into another entry
      *
-     * This function obeys a similar rule as destroying the object
+     * This function obeys a similar rule as destroying the object.
+     *
+     * Note that if the hash entry is trivially constritable then we just
+     * call memcpy to copy it
      */
     inline void CopyTo(HashEntry *other_p) {
-      // If this is a pointer then the pointer is copied
-      other_p->status = status;
-      other_p->hash_value = hash_value;
-      
-      switch(status) {
-        case StatusCode::FREE:
-        case StatusCode::DELETED:
-          break;
-        case StatusCode::INLINE_VALUE:
-          other_p->value.Init(value);
-          // FALL THROUGH
-        default:
-          other_p->key.Init(key);
+      if((std::is_trivially_copy_constructible<KeyType>::value &&
+          std::is_trivially_copy_constructible<ValueType>::value) == false) {
+        // If this is a pointer then the pointer is copied
+        other_p->status = status;
+        other_p->hash_value = hash_value;
+
+        switch(status) {
+          case StatusCode::FREE:
+          case StatusCode::DELETED:
+            break;
+          case StatusCode::INLINE_VALUE:
+            other_p->value.Init(value);
+            // FALL THROUGH
+          default:
+            other_p->key.Init(key);
+        }
+      } else {
+        // If the object is trivially copy constructible then just trivially
+        // copy construct it by a byte copy
+        std::memcpy(other_p, this, sizeof(HashEntry));
       }
 
       return;
@@ -725,6 +737,9 @@ class HashTable_OA_KVL {
     
     dbg_printf("Hash table size = %lu\n", entry_count);
     dbg_printf("Resize threshold = %lu\n", resize_threshold);
+    dbg_printf("is_trivially_copy_constructible = %d\n",
+               (int)(std::is_trivially_copy_constructible<KeyType>::value &&
+                     std::is_trivially_copy_constructible<ValueType>::value));
     
     return;
   }

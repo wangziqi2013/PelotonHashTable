@@ -107,28 +107,28 @@ class Data {
   /*
    * operator T - Type cast to its wrapped type
    */
-  operator T&() {
+  inline operator T&() {
     return data;
   }
 
   /*
    * Init(const T &) - Copy-construct
    */
-  void Init(const T &value) {
+  inline void Init(const T &value) {
     new (this) T{value};
   }
 
   /*
-   * Init() - Explciit default construct the object
+   * Init() - Explcit default construct the object
    */
-  void Init() {
+  inline void Init() {
     new (this) T{};
   }
 
   /*
    * Fini() - Explicitly destroy the data object
    */
-  void Fini() {
+  inline void Fini() {
     data.~T();
   }
 };
