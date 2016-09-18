@@ -62,6 +62,18 @@ class HashTable_CA_CC {
     KeyType key;
     ValueType value;
   };
+  
+  // This is an array holding HashEntry * as the head of a collision chain
+  HashEntry **entry_p_list_p;
+  
+  // Used to mask off insignificant bits for computing the index
+  uint64_t index_mask;
+  
+  // Size of the entry pointer list
+  uint64_t slot_count;
+  
+  // Number of HashEntry in this hash table
+  uint64_t element_count;
 };
 
 }
