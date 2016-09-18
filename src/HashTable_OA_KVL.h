@@ -713,10 +713,10 @@ class HashTable_OA_KVL {
    * caller. If not specified then it is either set to the larger one between
    * hardcoded minimum number of entries, or to PAGE_SIZE / sizeof(HashEntry)
    */
-  HashTable_OA_KVL(const KeyHashFunc &p_key_hash_obj = KeyHashFunc{},
+  HashTable_OA_KVL(uint64_t init_entry_count = 0,
+                   const KeyHashFunc &p_key_hash_obj = KeyHashFunc{},
                    const KeyEqualityChecker &p_key_eq_obj = KeyEqualityChecker{},
-                   const LoadFactorCalculator &p_lfc = LoadFactorCalculator{},
-                   uint64_t init_entry_count = 0) :
+                   const LoadFactorCalculator &p_lfc = LoadFactorCalculator{}) :
     active_entry_count{0},
     key_hash_obj{p_key_hash_obj},
     key_eq_obj{p_key_eq_obj},
@@ -857,7 +857,7 @@ class HashTable_OA_KVL {
      */
     void GotoNextEntry() {
       entry_p++;
-      while(entry_p->IsValudEntry() == false) {
+      while(entry_p->IsValidEntry() == false) {
         entry_p++;
       }
       
@@ -956,7 +956,7 @@ class HashTable_OA_KVL {
     }
 
     /*
-    * operator==() - Compares two iterators
+    * operator==() - Compares two iterators for equality
     *
     * Since "remaining" and value_p actually refers to the same thing, we only
     * compare "remaining"
@@ -964,6 +964,13 @@ class HashTable_OA_KVL {
     bool operator==(const Iterator &other) const {
      return (entry_p == other.entry_p) && \
             (remaining == other.remaining);
+    }
+    
+    /*
+     * operator!=() - Compares two iterators for non-equality
+     */
+    bool operator!=(const Iterator &other) const {
+      return !(*this == other);
     }
 
     /*
