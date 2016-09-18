@@ -767,10 +767,10 @@ class HashTable_OA_KVL {
    * The key and value will be copy-constructed into the table
    */
   void Insert(const KeyType &key, const ValueType &value) {
-    if(entry_count == resize_threshold) {
+    if(active_entry_count == resize_threshold) {
       Resize();
       // This must hold true for any load factor
-      assert(entry_count < resize_threshold);
+      assert(active_entry_count < resize_threshold);
     }
     
     // This function fills in hash value and key and chahges the
