@@ -52,7 +52,7 @@ void IteratorTest() {
 void ResizeTest() {
   HashTable ht{2};
   
-  for(uint64_t i = 0;i < 129;i++) {
+  for(uint64_t i = 0;i < 239;i++) {
     ht.Insert(i, i);
   }
   
@@ -60,7 +60,9 @@ void ResizeTest() {
   auto it2 = ht.End();
   
   while(it1 != it2) {
+    *it1 += 1;
     printf("%lu -> %lu\n", it1.GetKey(), *it1);
+    ++it1;
   }
   
   return;
