@@ -18,26 +18,57 @@ void PrintValuesForKey(HashTable *ht_p, uint64_t key) {
   return;
 }
 
-int main() {
+void IteratorTest() {
   HashTable ht{};
   
-  ht.Insert(12345, 67890);
-  ht.Insert(12345, 67891);
-  ht.Insert(12345, 67893);
-  ht.Insert(12345, 67892);
+  // Test data: 1 -> 1000, ..., 1002
+  //            2 -> 2000, ..., 2004
+  //            3 -> 3000
+  //            4 -> 4000
   
-  ht.Insert(12346, 111);
-  ht.Insert(12346, 112);
-  ht.Insert(12347, 222);
+  ht.Insert(1, 1001);
+  ht.Insert(4, 4000);
+  ht.Insert(1, 1002);
   
-  ht.Insert(12346, 113);
-  ht.Insert(12347, 223);
-  ht.Insert(12346, 114);
-  ht.Insert(12347, 224);
+  ht.Insert(2, 2000);
+  ht.Insert(2, 2002);
+  ht.Insert(1, 1000);
+  ht.Insert(2, 2001);
   
-  PrintValuesForKey(&ht, 12347);
-  PrintValuesForKey(&ht, 12345);
-  PrintValuesForKey(&ht, 12346);
+  ht.Insert(2, 2004);
+  
+  ht.Insert(3, 3000);
+  ht.Insert(2, 2003);
+  
+  
+  auto it2 = ht.End();
+  for(auto it = ht.Begin();it != it2;++it) {
+    printf("%lu -> %lu\n", it.GetKey(), *it);
+  }
+  
+  return;
+}
+
+void ResizeTest() {
+  HashTable ht{2};
+  
+  for(uint64_t i = 0;i < 129;i++) {
+    ht.Insert(i, i);
+  }
+  
+  auto it1 = ht.Begin();
+  auto it2 = ht.End();
+  
+  while(it1 != it2) {
+    printf("%lu -> %lu\n", it1.GetKey(), *it1);
+  }
+  
+  return;
+}
+
+int main() {
+  IteratorTest();
+  ResizeTest();
 
   return 0;
 }
