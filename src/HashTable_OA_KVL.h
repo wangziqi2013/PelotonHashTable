@@ -928,43 +928,64 @@ class HashTable_OA_KVL {
       return;
     }
 
-   /*
+    /*
     * Prefix operator++() - Advances the iterator by one element
     */
-   Iterator &operator++() {
+    Iterator &operator++() {
      Advance();
-     
+
      return *this;
-   }
-   
-   /*
+    }
+
+    /*
     * Postfix operator++() - Advances the iterator by one element
     *                        and return the value before ++ operation
     *
     * Note that this operation is slower than the prefix++ since it copy
     * constructs an instance of the value each time it is called
     */
-   Iterator operator++(int) {
+    Iterator operator++(int) {
       // Copy construct one
       // Note that this operation is pretty expensive
       // so use prefix ++ as often as possible
       Iterator ret = *this;
-      
+
       Advance();
-      
+
       return ret;
-   }
-   
-   /*
+    }
+
+    /*
     * operator==() - Compares two iterators
     *
     * Since "remaining" and value_p actually refers to the same thing, we only
     * compare "remaining"
     */
-   bool operator==(const Iterator &other) const {
+    bool operator==(const Iterator &other) const {
      return (entry_p == other.entry_p) && \
             (remaining == other.remaining);
-   }
+    }
+
+    /*
+     * operator*() - Pointer dereference
+     *
+     * We return a mutable reference of ValueType to the caller
+     * such that the caller is free to modify the value
+     * already stored in the hash table
+     */
+    ValueType &operator*() {
+      return *value_p;
+    }
+    
+    /*
+     * GetKey() - Returns a constant reference to the key
+     *
+     * Note that key object stored in the hash table is not allowed to be
+     * modified since otherwise the hash entry would be in the wrong position
+     */
+    const KeyType &GetKey() {
+      return entry_p->key.data;
+    }
   };
   
  private:
@@ -1024,7 +1045,7 @@ class HashTable_OA_KVL {
    */
   inline Iterator Begin() {
     // If the hash table is empty then directly return end iterator
-    if(active_entry_count() == 0) {
+    if(active_entry_count == 0) {
       return End();
     }
 
