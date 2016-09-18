@@ -603,13 +603,16 @@ class HashTable_OA_KVL {
         // This is the place where we insert the entry in
         HashEntry *new_entry_p = ProbeForResize(entry_p->hash_value);
         
-        // This calls the copy construct for KeyType and ValueType
+        // This calls the copy constructor for KeyType and ValueType
         // explicitly
         entry_p->CopyTo(new_entry_p);
         
         // And then call destructor explicitly to destroy key AND/OR value
         entry_p->Fini();
       }
+      
+      // We could directly add here since we scan from the beginning
+      entry_p++;
     }
     
     // Free old list to avoid memory leak
