@@ -124,6 +124,39 @@ class HashTable_OA_KVL {
       
       return;
     }
+    
+    /*
+     * DeleteIndex() - Removes the element on the specified index, and
+     *                 elements after it by 1
+     *
+     * This function calls destructor first, and then calls copy
+     * constructor for each slot being shifted into
+     *
+     * If there are k elements after the deleted item, then destructor
+     * will be called (k + 1) times, and copy constructor will be called
+     * k times. Therefore this operation is non-trivial
+     */
+    void DeleteIndex(uint32_t index) {
+      assert(index < size);
+      
+      // Finish it first
+      data[index].Fini();
+      
+      // "from" is the index being copied from
+      for(uint32_t from = index + 1;from < size;from++) {
+        uint32_t to = from - 1;
+        
+        // Move it one element ahead
+        data[to].Init(data[from]);
+        // And then destroy the element
+        data[from].Fini();
+      }
+      
+      // This should be done after everything has been finished
+      size--;
+      
+      return;
+    }
 
     /*
      * GetResized() - Double the size of the current instance and return
@@ -852,46 +885,6 @@ class HashTable_OA_KVL {
   }
   
   /*
-   * Delete() - Removes one element
-   *
-   * This function takes an iterator that points to a valid value to be removed
-   * since we do not have a value comparator inside the hash table, there is no
-   * way for us to compare value directly.
-   *
-   * Delete() operation invalidates all iterators on the entry being
-   * deleted from, but preserves validity of all other iterators
-   */
-  void Delete(const Iterator &it) {
-    HashEntry *entry_p = it.entry_p;
-    
-    assert(entry_p->IsValidEntry() == true);
-    
-    if(entry_p->HasKeyValueList() == false) {
-      // This will update active_entry_count
-      DeleteEntry(entry_p);
-      
-      return;
-    }
-    
-    // If not the case then we might be on a key value list
-    
-    KeyValueList *kv_p = entry_p->kv_p;
-    
-    assert(kv_p->size > 0);
-    if(kv_p->size == 1) {
-      // If the size of the key value list then it is equivalent to
-      // having an inlined value - just destroy the entire entry
-      DeleteEntry(entry_p);
-    } else {
-      // Otherwise just delete the element pointed to by remaining
-      // which is an index
-      kv_p->DeleteIndex(kv_p->size - it.remaining);
-    }
-    
-    return;
-  }
-  
-  /*
    * GetValue() - Return a pointer to value and number of values
    *
    * The first pointer is returned as
@@ -1180,6 +1173,46 @@ class HashTable_OA_KVL {
     it2.remaining = 1;
 
     return {it1, it2};
+  }
+  
+  /*
+   * Delete() - Removes one element
+   *
+   * This function takes an iterator that points to a valid value to be removed
+   * since we do not have a value comparator inside the hash table, there is no
+   * way for us to compare value directly.
+   *
+   * Delete() operation invalidates all iterators on the entry being
+   * deleted from, but preserves validity of all other iterators
+   */
+  void Delete(const Iterator &it) {
+    HashEntry *entry_p = it.entry_p;
+
+    assert(entry_p->IsValidEntry() == true);
+
+    if(entry_p->HasKeyValueList() == false) {
+      // This will update active_entry_count
+      DeleteEntry(entry_p);
+
+      return;
+    }
+
+    // If not the case then we might be on a key value list
+
+    KeyValueList *kv_p = entry_p->kv_p;
+
+    assert(kv_p->size > 0);
+    if(kv_p->size == 1) {
+      // If the size of the key value list then it is equivalent to
+      // having an inlined value - just destroy the entire entry
+      DeleteEntry(entry_p);
+    } else {
+      // Otherwise just delete the element pointed to by remaining
+      // which is an index
+      kv_p->DeleteIndex(kv_p->size - it.remaining);
+    }
+
+    return;
   }
 };
 
