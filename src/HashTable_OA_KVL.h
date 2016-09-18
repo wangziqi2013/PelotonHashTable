@@ -787,6 +787,33 @@ class HashTable_OA_KVL {
   }
   
   /*
+   * DeleteKey() - Deletes a key with all its value(s) from the table
+   *
+   * If the key does not exist in the hash table then return false; Otherwise
+   * return true
+   */
+  bool DeleteKey(const KeyType &key) {
+    HashEntry *entry_p = ProbeForSearch(key);
+    if(entry_p == nullptr) {
+      return false;
+    }
+    
+    // If there is a key value list then call destructor for all
+    // values first
+    if(entry_p->HasKeyValueList() == true) {
+      entry_p->kv_p->DestroyAllValues();
+    }
+    
+    // Call the destructor manually for inlined key AND/OR value
+    entry_p->Fini();
+    
+    // Mark it as deleted
+    entry_p->status = HashEntry::StatusCode::DELETED;
+    
+    return;
+  }
+  
+  /*
    * Delete() - Removes one element with the given value
    *
    * Note that if there are multiple values with the same key, this
