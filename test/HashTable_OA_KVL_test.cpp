@@ -19,6 +19,8 @@ void PrintValuesForKey(HashTable *ht_p, uint64_t key) {
 }
 
 void IteratorTest() {
+  dbg_printf("========== Iterator Test ==========\n");
+  
   HashTable ht{};
   
   // Test data: 1 -> 1000, ..., 1002
@@ -50,6 +52,8 @@ void IteratorTest() {
 }
 
 void ResizeTest() {
+  dbg_printf("========== Resize Test ==========\n");
+  
   HashTable ht{2};
   
   for(uint64_t i = 0;i < 239;i++) {
@@ -68,9 +72,32 @@ void ResizeTest() {
   return;
 }
 
+void DeleteTest() {
+  dbg_printf("========== Delete Test ==========\n");
+  
+  HashTable ht{};
+
+  for(uint64_t i = 0;i < 239;i++) {
+    ht.Insert(i, i);
+  }
+  
+  for(int64_t i = 238;i >= 0;i--) {
+    ht.DeleteKey((uint64_t)i);
+  }
+  
+  auto it1 = ht.Begin();
+  auto it2 = ht.End();
+  
+  while(it1 != it2) {
+    printf("%lu -> %lu\n", it1.GetKey(), *it1);
+    ++it1;
+  }
+}
+
 int main() {
   IteratorTest();
   ResizeTest();
+  DeleteTest();
 
   return 0;
 }
