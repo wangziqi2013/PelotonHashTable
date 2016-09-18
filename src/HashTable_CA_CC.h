@@ -52,6 +52,8 @@ class HashTable_CA_CC {
    * more compact layout
    */
   class HashEntry {
+    friend class HashTable_CA_CC;
+    
    private:
     // Hash value for fast objecy comparison
     uint64_t hash_value;
@@ -59,8 +61,22 @@ class HashTable_CA_CC {
     // Pointer to the next entry in the collision chain
     HashEntry *next_p;
     
-    KeyType key;
-    ValueType value;
+    // We put them into a pair to make iterator easier to implement
+    std::pair<KeyType, ValueType> kv_pair;
+
+   public:
+    
+    /*
+     * Constructor
+     */
+    HashEntry(uint64_t p_hash_value,
+              HashEntry *p_next_p,
+              const KeyType &key,
+              const ValueType *value) :
+      hash_value{p_hash_value},
+      next_p{p_next_p},
+      kv_pair{key, value}
+    {}
   };
   
   // This is an array holding HashEntry * as the head of a collision chain
@@ -73,7 +89,142 @@ class HashTable_CA_CC {
   uint64_t slot_count;
   
   // Number of HashEntry in this hash table
-  uint64_t element_count;
+  uint64_t entry_count;
+  
+  // This is the length of the chain
+  // If the length of any collision chain exceeds this threshold then
+  // a rehash will be scheduled
+  // Note that this will not be changed even if the size of the array changes
+  int resize_threshold;
+  
+ private:
+   
+  /*
+   * Resize() - Double the size of the array and scatter elements
+   *            into their new position
+   */
+  void Resize() {
+    // Preserver these two values
+    uint64_t old_slot_count = slot_count;
+    HashEntry **old_entry_p_list_p = entry_p_list_p;
+    
+    slot_count <<= 1;
+    index_mask = slot_count - 1;
+    
+    // Allocate a new chunk of memory to hold collision chains
+    entry_p_list_p = new HashEntry*[slot_count];
+    
+    // Iterate through all slots first
+    for(uint64_t i = 0;i < old_slot_count;i++) {
+      // This points to the first element of the collision chain
+      HashEntry *entry_p = old_entry_p_list_p[i];
+      
+      while(entry_p != nullptr) {
+        // Mask it with the new index mask
+        uint64_t new_index = entry_p->hash_value & index_mask;
+        
+        // Save the next pointer first
+        HashEntry *temp = entry_p->next_p;
+        
+        // Link it to the new slot's chain
+        entry_p->next_p = entry_p_list_p[new_index];
+        // Let the new slot point to it also
+        entry_p_list_p[new_index] = entry_p;
+        
+        // And then use this pointe to continue the loop
+        entry_p = temp;
+      }
+    }
+    
+    // Free the memory for old entry pointer list
+    delete[] old_entry_p_list_p;
+    
+    return;
+  }
+  
+ public:
+
+  /*
+   * Constructor
+   */
+  HashTable_CA_CC(int p_resize_threshold = DEFAULT_CC_MAX_LENGTH,
+                  const KeyHashFunc &p_key_hash_obj = KeyHashFunc{},
+                  const KeyEqualityChecker &p_key_eq_obj = KeyEqualityChecker{}) :
+    entry_count{0},
+    key_hash_obj{p_key_hash_obj},
+    key_eq_obj{p_key_eq_obj},
+    lfc{p_lfc} {}
+
+  /*
+   * Insert() - Adds a key value pair into the table
+   *
+   * This operation invalidates existing iterators in case of a rehash
+   */
+  void Insert(const KeyType &key, const ValueType &value) {
+    uint64_t hash_value = key_hash_obj(key);
+    uint64_t index = index_mask & hash_value;
+    
+    // This should be done for every insert
+    entry_count++;
+    
+    // Update the pointer of the slot by allocating a new entry
+    entry_p_list_p[index] = \
+      new HashEntry{hash_value, entry_p_list_p[index], key, value};
+    assert(entry_p_list_p[index] != nullptr);
+    
+    return;
+  }
+  
+  /*
+   * GetValue() - For a given key, invoke the given call back on the key
+   *              value pair associated with the entry
+   */
+  void GetValue(const KeyType &key,
+                std::function<void(const std::pair<KeyType, ValueType> &)> cb) {
+    uint64_t hash_value = key_hash_obj(key);
+    uint64_t index = index_mask & hash_value;
+
+    HashEntry *entry_p = entry_p_list_p[index];
+
+    int chain_length = 0;
+
+    // Then loop through the collision chain and check hash value
+    // as well as key to find values associated with it
+    while(entry_p != nullptr) {
+      if(hash_value == entry_p->hash_value) {
+        if(key_eq_obj(key, entry_p->kv_pair.first) == true) {
+          cb(entry_p->kv_pair);
+        }
+      }
+
+      entry_p = entry_p->next_p;
+      chain_length++;
+    }
+    
+    // If the length of the delta chain is greater than or equal to the
+    // threshold
+    if(chain_length >= resize_threshold) {
+      Resize();
+    }
+    
+    return;
+  }
+  
+  /*
+   * GetValue() - Return all value elements in a vector
+   */
+  void GetValue(const KeyType &key, std::vector<ValueType> *value_list_p) {
+    // Call the GetValue() with a call back defined as lambda function
+    // that pushes each individual value into the list
+    GetValue(key,
+             [value_list_p](const std::pair<KeyType, ValueType> &kv_pair) {
+               value_list_p->push_back(kv_pair.second);
+               
+               return;
+             });
+    
+    return;
+  }
 };
 
 }
