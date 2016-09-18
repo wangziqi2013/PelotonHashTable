@@ -110,6 +110,9 @@ class HashTable_OA_KVL {
      *
      * Since we do not invoke destructor by operator delete, destructor must be
      * called explicitly when this is destroyed
+     *
+     * Note that this function does not free the memory for itself, so the
+     * caller to this function needs to call free() to avoid memory leak
      */
     void DestroyAllValues() {
       assert(size <= capacity);
@@ -694,6 +697,9 @@ class HashTable_OA_KVL {
       // list's value array
       if(entry_p->HasKeyValueList() == true) {
         entry_p->kv_p->DestroyAllValues();
+        
+        // Avoid memory leak
+        free(entry_p->kv_p);
       }
 
       // Always go to the next entry
@@ -768,6 +774,10 @@ class HashTable_OA_KVL {
    * Insert() - Inserts a value into the hash table
    *
    * The key and value will be copy-constructed into the table
+   *
+   * This function might invalidate all iterators on the hash table in case
+   * of a resize(). If no resize happens then it does not invalidate any
+   * valid pointer including the End() pointer
    */
   void Insert(const KeyType &key, const ValueType &value) {
     if(active_entry_count == resize_threshold) {
@@ -786,11 +796,48 @@ class HashTable_OA_KVL {
     return;
   }
   
+ private:
+
+  /*
+   * DeleteEntry() - Deletes an existing entry entirely from the hash table
+   *
+   * This function erases a key togetehr with all its values from the hash
+   * table and updates metadata in the table header
+   */
+  void DeleteEntry(HashEntry *entry_p) {
+    assert(entry_p->IsValidEntry() == true);
+    
+    // If there is a key value list then call destructor for all
+    // values first
+    if(entry_p->HasKeyValueList() == true) {
+      entry_p->kv_p->DestroyAllValues();
+      
+      // Free its memory to avoid leak
+      free(entry_p->kv_p);
+    }
+
+    // Call the destructor manually for inlined key AND/OR value
+    entry_p->Fini();
+
+    // Mark it as deleted - stop point for insertion, but does not
+    // terminate probing for value search
+    entry_p->status = HashEntry::StatusCode::DELETED;
+
+    // At last decrease the entry counter
+    active_entry_count--;
+
+    return;
+  }
+
+ public:
+   
   /*
    * DeleteKey() - Deletes a key with all its value(s) from the table
    *
    * If the key does not exist in the hash table then return false; Otherwise
    * return true
+   *
+   * DeleteKey() invalidates iterators on the entry having key
    */
   bool DeleteKey(const KeyType &key) {
     HashEntry *entry_p = ProbeForSearch(key);
@@ -798,37 +845,50 @@ class HashTable_OA_KVL {
       return false;
     }
     
-    // If there is a key value list then call destructor for all
-    // values first
-    if(entry_p->HasKeyValueList() == true) {
-      entry_p->kv_p->DestroyAllValues();
-    }
+    // This also updates active_entry_count
+    DeleteEntry(entry_p);
     
-    // Call the destructor manually for inlined key AND/OR value
-    entry_p->Fini();
-    
-    // Mark it as deleted
-    entry_p->status = HashEntry::StatusCode::DELETED;
-    
-    return;
+    return true;
   }
   
   /*
-   * Delete() - Removes one element with the given value
+   * Delete() - Removes one element
    *
-   * Note that if there are multiple values with the same key, this
-   * routine should be called multiple times to remove all of them
+   * This function takes an iterator that points to a valid value to be removed
+   * since we do not have a value comparator inside the hash table, there is no
+   * way for us to compare value directly.
+   *
+   * Delete() operation invalidates all iterators on the entry being
+   * deleted from, but preserves validity of all other iterators
    */
-  bool Delete(const KeyType &key, const ValueType &value) {
-    HashEntry *entry_p = ProbeForSearch(key);
-    if(entry_p == nullptr) {
-      return false;
+  void Delete(const Iterator &it) {
+    HashEntry *entry_p = it.entry_p;
+    
+    assert(entry_p->IsValidEntry() == true);
+    
+    if(entry_p->HasKeyValueList() == false) {
+      // This will update active_entry_count
+      DeleteEntry(entry_p);
+      
+      return;
     }
     
-    // This is the easy case: there is no key value list
-    if(entry_p->HasKeyValueList() == false) {
-      //if()
+    // If not the case then we might be on a key value list
+    
+    KeyValueList *kv_p = entry_p->kv_p;
+    
+    assert(kv_p->size > 0);
+    if(kv_p->size == 1) {
+      // If the size of the key value list then it is equivalent to
+      // having an inlined value - just destroy the entire entry
+      DeleteEntry(entry_p);
+    } else {
+      // Otherwise just delete the element pointed to by remaining
+      // which is an index
+      kv_p->DeleteIndex(kv_p->size - it.remaining);
     }
+    
+    return;
   }
   
   /*
