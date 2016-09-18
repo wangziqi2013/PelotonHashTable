@@ -822,8 +822,8 @@ class HashTable_OA_KVL {
     
     return std::make_pair(&entry_p->value.data, 1);
   }
-  
- public:
+
+ private:
   
   /*
    * class Iterator - Supports iterating on the hash table
@@ -838,6 +838,7 @@ class HashTable_OA_KVL {
    *      very necessary
    */
   class Iterator {
+    friend class HashTable_OA_KVL;
    private:
     // Current hash entry
     HashEntry *entry_p;
@@ -965,6 +966,103 @@ class HashTable_OA_KVL {
             (remaining == other.remaining);
    }
   };
+  
+ private:
+
+  /*
+   * BuildIterator() - Given a HashEntry, build an iterator pointing to
+   *                   the first element in that entry
+   */
+  Iterator BuildIterator(HashEntry *entry_p) {
+    ValueType *value_p = &entry_p->value.data;
+    uint32_t remaining = 1;
+
+    // If there is a key value list then update value pointer
+    // and remaining elements
+    if(entry_p->HasKeyValueList() == true) {
+      remaining = entry_p->kv_p->size;
+      assert(remaining > 0);
+
+      value_p = &entry_p->kv_p->data[0].data;
+    }
+
+    // Construct an iterator
+    return Iterator{entry_p, value_p, remaining};
+  }
+  
+ public:
+  
+  /*
+   * End() - Returns an iterator that points to the end it of the hash table
+   *
+   * Note that end iterator is defined as the first entry that is not part of
+   * the hash table, so we need a sentinel object to act as a concrete last
+   * object which stops iteration when the iterator reaches there.
+   */
+  inline Iterator End() {
+    return BuildIterator(entry_list_p + entry_count);
+  }
+  
+  /*
+   * Begin() - Return an iterator pointing to the first element of a given key
+   */
+  inline Iterator Begin(const KeyType &key) {
+    HashEntry *entry_p = ProbeForSearch(key);
+
+    // If element not found just return end() iterator
+    if(entry_p == nullptr) {
+      return End();
+    }
+
+    assert(entry_p->IsValidEntry() == true);
+
+    return BuildIterator(entry_p);
+  }
+
+  /*
+   * Begin() - Get an iterator pointing to the beinning of the HashTeble
+   */
+  inline Iterator Begin() {
+    // If the hash table is empty then directly return end iterator
+    if(active_entry_count() == 0) {
+      return End();
+    }
+
+    HashEntry *entry_p = entry_list_p;
+    while(entry_p->IsValidEntry() == false) {
+      entry_p++;
+    }
+
+    // We are guaranteed that this is not the sentinel
+    return BuildIterator(entry_p);
+  }
+
+  /*
+   * KeyRange() - Return a pair of iterators that point to the starting and
+   *              ending point of an element
+   */
+  inline std::pair<Iterator, Iterator> KeyRange(const KeyType &key) {
+    HashEntry *entry_p = ProbeForSearch(key);
+
+    // If element not found just return end() iterator
+    if(entry_p == nullptr) {
+      return std::make_pair(End(), End());
+    }
+
+    assert(entry_p->IsValidEntry() == true);
+
+    Iterator it1 = BuildIterator(entry_p);
+    Iterator it2 = it1;
+
+    assert(it2.remaining > 0);
+
+    // Advance its value pointer to point to the last element
+    // Note that remaining must > 0 as defined
+    it2.value_p += (it2.remaining - 1);
+    it2.remaining = 1;
+
+    return {it1, it2};
+  }
 };
 
 }
