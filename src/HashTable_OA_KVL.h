@@ -26,7 +26,7 @@ namespace index {
  *
  *   1. Open addressing design and inlined data storage makes it cache friendly
  *      but on the other hand, since the load factor must be maintained at a
- *      reasonably level, more memory are allocated for efficiency
+ *      reasonably low level, more memory are allocated for efficiency
  *
  *   2. KeyValueList makes iterating over values for a given key fast, but if
  *      there is not much key duplicates then this design has the disadvantage
