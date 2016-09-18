@@ -1,6 +1,6 @@
 
 CXX=g++
-CXXFLAGS=-Wall -Werror -std=c++11
+CXXFLAGS=-Wall -Werror -std=c++11 -g
 
 all:
 	@echo "*"
