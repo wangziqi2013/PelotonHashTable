@@ -43,6 +43,11 @@ class HashTable_CA_CC {
   // (It was 128 in Peloton LLVM codegen hash table!!!)
   static constexpr int DEFAULT_CC_MAX_LENGTH = 32;
   
+  // The size of a typical page
+  static constexpr uint64_t PAGE_SIZE = 4096;
+  
+  // Let the first array fill one entire page
+  static constexpr uint64_t INIT_SLOT_COUNT = PAGE_SIZE / sizeof(void *);
   /*
    * class HashEntry() - The hash entry for holding key and value
    *
@@ -97,6 +102,10 @@ class HashTable_CA_CC {
   // Note that this will not be changed even if the size of the array changes
   int resize_threshold;
   
+  // Specialized function for computing hash and comparison
+  KeyHashFunc key_hash_obj;
+  KeyEualityChecker key_eq_obj;
+  
  private:
    
   /*
@@ -113,6 +122,7 @@ class HashTable_CA_CC {
     
     // Allocate a new chunk of memory to hold collision chains
     entry_p_list_p = new HashEntry*[slot_count];
+    memset(entry_p_list_p, 0x0, sizeof(void *) * slot_count);
     
     // Iterate through all slots first
     for(uint64_t i = 0;i < old_slot_count;i++) {
@@ -147,13 +157,28 @@ class HashTable_CA_CC {
   /*
    * Constructor
    */
-  HashTable_CA_CC(int p_resize_threshold = DEFAULT_CC_MAX_LENGTH,
+  HashTable_CA_CC(uint64_t p_slot_count = INIT_SLOT_COUNT,
+                  int p_resize_threshold = DEFAULT_CC_MAX_LENGTH,
                   const KeyHashFunc &p_key_hash_obj = KeyHashFunc{},
                   const KeyEqualityChecker &p_key_eq_obj = KeyEqualityChecker{}) :
+    slot_count{p_slot_count},
     entry_count{0},
+    resize_threshold{p_resize_threshold},
     key_hash_obj{p_key_hash_obj},
-    key_eq_obj{p_key_eq_obj},
-    lfc{p_lfc} {}
+    key_eq_obj{p_key_eq_obj} {
+    // First round it up to power of 2
+    int leading_zero = __builtin_clzl(slot_count);
+    int effective_bits = 64 - leading_zero;
+
+    // It has a 1 bit on the highest bit
+    slot_count = 0x0000000000000001 << effective_bits;
+    index_mask = entry_count - 1;
+    
+    entry_p_list_p = new HashEntry*[slot_count];
+    memset(entry_p_list_p, 0x0, sizeof(void *) * slot_count);
+    
+    return;
+  }
 
   /*
    * Insert() - Adds a key value pair into the table
