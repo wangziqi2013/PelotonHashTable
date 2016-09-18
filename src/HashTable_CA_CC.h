@@ -275,6 +275,20 @@ class HashTable_CA_CC {
     
     return;
   }
+  
+ private:
+   
+  /*
+   * class Iterator - Iterates through the hash table
+   */
+  class Iterator {
+    friend class HashTable_CC_CA;
+    
+   private:
+    HashEntry *entry_p;
+    uint64_t slot_index;
+  };
+
 };
 
 }
