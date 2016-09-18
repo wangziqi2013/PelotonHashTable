@@ -1008,7 +1008,7 @@ class HashTable_OA_KVL {
       value_p = other.value_p;
       remaining = other.remaining;
       
-      return;
+      return *this;
     }
 
     /*

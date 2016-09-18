@@ -79,6 +79,9 @@ void DeleteTest() {
 
   for(uint64_t i = 0;i < 239;i++) {
     ht.Insert(i, i);
+    ht.Insert(i, i + 1);
+    ht.Insert(i, i + 2);
+    ht.Insert(i, i + 3);
   }
   
   for(int64_t i = 238;i >= 0;i--) {
@@ -94,10 +97,41 @@ void DeleteTest() {
   }
 }
 
+void DeleteTest2() {
+  dbg_printf("========== Delete Test 2 ==========\n");
+
+  HashTable ht{};
+
+  for(uint64_t i = 0;i < 239;i++) {
+    ht.Insert(i, i);
+    ht.Insert(i, i + 1);
+    ht.Insert(i, i + 2);
+    ht.Insert(i, i + 3);
+  }
+
+  for(int64_t i = 238;i >= 0;i--) {
+    auto it = ht.Begin(i);
+    ht.Delete(it);
+    it = ht.Begin(i);
+    ht.Delete(it);
+    it = ht.Begin(i);
+    ht.Delete(it);
+  }
+
+  auto it1 = ht.Begin();
+  auto it2 = ht.End();
+
+  while(it1 != it2) {
+    printf("%lu -> %lu\n", it1.GetKey(), *it1);
+    ++it1;
+  }
+}
+
 int main() {
   IteratorTest();
   ResizeTest();
   DeleteTest();
+  DeleteTest2();
 
   return 0;
 }
