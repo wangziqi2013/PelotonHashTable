@@ -179,6 +179,31 @@ class HashTable_CA_CC {
     
     return;
   }
+  
+  /*
+   * Destructor - Frees the array and all entries
+   */
+  ~HashTable_CA_CC() {
+    for(uint64_t i = 0;i < slot_count;i++) {
+      HashEntry *entry_p = entry_p_list_p[i];
+      
+      while(entry_p != nullptr) {
+        // Save the next pointer first
+        HashEntry *temp = entry->next_p;
+        
+        // Then free the entry
+        delete entry_p;
+        
+        // Use this to continue looping
+        entry_p = temp;
+      }
+    }
+    
+    // Also free the pointer array
+    delete[] entry_p_list_p;
+    
+    return;
+  }
 
   /*
    * Insert() - Adds a key value pair into the table
