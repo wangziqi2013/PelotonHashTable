@@ -5,8 +5,8 @@
 #include <cassert>
 #include <utility>
 #include <functional>
-#include <type_traits>
 #include <cstring>
+#include <vector>
 
 namespace peloton {
 namespace index {
@@ -41,7 +41,7 @@ class HashTable_CA_CC {
   // If collision chain is longer than this then we double the size of the
   // hash table and rehash
   // (It was 128 in Peloton LLVM codegen hash table!!!)
-  static constexpr int DEFAULT_CC_MAX_LENGTH = 32;
+  static constexpr int DEFAULT_CC_MAX_LENGTH = 8;
   
   // The size of a typical page
   static constexpr uint64_t PAGE_SIZE = 4096;
@@ -104,7 +104,7 @@ class HashTable_CA_CC {
   
   // Specialized function for computing hash and comparison
   KeyHashFunc key_hash_obj;
-  KeyEualityChecker key_eq_obj;
+  KeyEqualityChecker key_eq_obj;
   
  private:
    
@@ -177,6 +177,8 @@ class HashTable_CA_CC {
     entry_p_list_p = new HashEntry*[slot_count];
     memset(entry_p_list_p, 0x0, sizeof(void *) * slot_count);
     
+    dbg_printf("Slot count = %lu\n", slot_count);
+    
     return;
   }
   
@@ -189,7 +191,7 @@ class HashTable_CA_CC {
       
       while(entry_p != nullptr) {
         // Save the next pointer first
-        HashEntry *temp = entry->next_p;
+        HashEntry *temp = entry_p->next_p;
         
         // Then free the entry
         delete entry_p;
@@ -208,7 +210,7 @@ class HashTable_CA_CC {
   /*
    * Insert() - Adds a key value pair into the table
    *
-   * This operation invalidates existing iterators in case of a rehash
+   * This operation does not invalidate any iterator on existing entries
    */
   void Insert(const KeyType &key, const ValueType &value) {
     uint64_t hash_value = key_hash_obj(key);
@@ -228,6 +230,9 @@ class HashTable_CA_CC {
   /*
    * GetValue() - For a given key, invoke the given call back on the key
    *              value pair associated with the entry
+   *
+   * Note that this function might cause a resize if during the traversal
+   * the delta chain is larger
    */
   void GetValue(const KeyType &key,
                 std::function<void(const std::pair<KeyType, ValueType> &)> cb) {
