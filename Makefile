@@ -1,6 +1,7 @@
 
 CXX=g++
-CXXFLAGS=-Wall -Werror -std=c++11 -g
+CXXFLAGS=-Wall -Werror -std=c++11
+OPT_FLAGS=-g
 
 all:
 	@echo "*"
@@ -13,7 +14,10 @@ prepare:
 	mkdir -p bin
 
 oa_kvl_test: ./src/HashTable_OA_KVL.cpp ./test/HashTable_OA_KVL_test.cpp
-	$(CXX) $(CXXFLAGS) $^ -o ./bin/oa_kvl_test
+	$(CXX) $(CXXFLAGS) $(OPT_FLAGS) $^ -o ./bin/oa_kvl_test
+    
+ca_cc_test: ./src/HashTable_CA_CC.cpp ./test/HashTable_CA_CC_test.cpp
+	$(CXX) $(CXXFLAGS) $(OPT_FLAGS) $^ -o ./bin/ca_cc_test
 
 clean:
 	rm -f ./bin/*
