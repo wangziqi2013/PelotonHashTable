@@ -926,7 +926,7 @@ class HashTable_OA_KVL {
     if(entry_p == nullptr) {
       return nullptr;
     } else if(entry_p->HasKeyValueList() == true) {
-      &entry_p->kv_p->data[0].data;
+      return &entry_p->kv_p->data[0].data;
     }
 
     return &entry_p->value.data;
