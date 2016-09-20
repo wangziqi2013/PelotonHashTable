@@ -3,7 +3,7 @@
 #include <iostream>
 #include <random>
 #include <chrono>
-#include "unordered_map"
+#include <unordered_map>
 
 
 using namespace peloton;
@@ -62,16 +62,16 @@ void UnorderedMapSequentialInsertTest(uint64_t key_num) {
   start = std::chrono::system_clock::now();
 
   // Insert 1 million keys into std::map
-  std::unordered_map<uint64_t, uint64_t> test_map{};
+  std::unordered_multimap<uint64_t, uint64_t> test_map{};
   for(uint64_t i = 0;i < key_num;i++) {
-    test_map[i] = i;
+    test_map.insert({i, i});
   }
 
   end = std::chrono::system_clock::now();
 
   std::chrono::duration<double> elapsed_seconds = end - start;
 
-  std::cout << "std::unordered_map: " << 1.0 * key_num / (1024 * 1024) / elapsed_seconds.count()
+  std::cout << "std::unordered_multimap: " << 1.0 * key_num / (1024 * 1024) / elapsed_seconds.count()
             << " million insertion/sec" << "\n";
 
   ////////////////////////////////////////////
@@ -85,7 +85,7 @@ void UnorderedMapSequentialInsertTest(uint64_t key_num) {
   for(int j = 0;j < iter;j++) {
     // Read 1 million keys from std::map
     for(uint64_t i = 0;i < key_num;i++) {
-      uint64_t t = test_map[i];
+      uint64_t t = test_map.find(i)->second;
 
       v.push_back(t);
       v.clear();
@@ -95,7 +95,7 @@ void UnorderedMapSequentialInsertTest(uint64_t key_num) {
   end = std::chrono::system_clock::now();
 
   elapsed_seconds = end - start;
-  std::cout << "std::unordered_map: " << (1.0 * iter * key_num) / (1024 * 1024) / elapsed_seconds.count()
+  std::cout << "std::unordered_multimap: " << (1.0 * iter * key_num) / (1024 * 1024) / elapsed_seconds.count()
             << " million read/sec" << "\n";
 
   return;
