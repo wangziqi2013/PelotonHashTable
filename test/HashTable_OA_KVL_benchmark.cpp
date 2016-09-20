@@ -9,18 +9,26 @@
 using namespace peloton;
 using namespace index;
 
+template <size_t sz>
+class FixedLenValue {
+ public:
+  char data[sz];  
+};
+
+using ValueType = FixedLenValue<64>;
+
 void SequentialInsertTest(uint64_t key_num) {
   std::chrono::time_point<std::chrono::system_clock> start, end;
   start = std::chrono::system_clock::now();
-
+  
   // Insert 1 million keys into std::map
   HashTable_OA_KVL<uint64_t,
-                   uint64_t,
+                   ValueType,
                    SimpleInt64Hasher,
                    std::equal_to<uint64_t>,
-                   LoadFactorPercent<98>> test_map{1024};
+                   LoadFactorPercent<75 >> test_map{1024};
   for(uint64_t i = 0;i < key_num;i++) {
-    test_map.Insert(i, i);
+    test_map.Insert(i, ValueType{});
     //test_map.Insert(i, i + 1);
   }
 
@@ -33,7 +41,7 @@ void SequentialInsertTest(uint64_t key_num) {
 
   ////////////////////////////////////////////
   // Test read
-  std::vector<uint64_t> v{};
+  std::vector<ValueType> v{};
   v.reserve(100);
 
   start = std::chrono::system_clock::now();
@@ -42,7 +50,7 @@ void SequentialInsertTest(uint64_t key_num) {
   for(int j = 0;j < iter;j++) {
     // Read 1 million keys from std::map
     for(uint64_t i = 0;i < key_num;i++) {
-      uint64_t *t = test_map.GetFirstValue(i);
+      ValueType *t = test_map.GetFirstValue(i);
 
       v.push_back(*t);
       v.clear();
@@ -96,9 +104,9 @@ void UnorderedMapSequentialInsertTest(uint64_t key_num) {
   start = std::chrono::system_clock::now();
 
   // Insert 1 million keys into std::map
-  std::unordered_multimap<uint64_t, uint64_t, SimpleInt64Hasher> test_map{};
+  std::unordered_multimap<uint64_t, ValueType, SimpleInt64Hasher> test_map{};
   for(uint64_t i = 0;i < key_num;i++) {
-    test_map.insert({i, i});
+    test_map.insert({i, ValueType{}});
     //test_map.insert({i, i + 1});
   }
 
@@ -111,7 +119,7 @@ void UnorderedMapSequentialInsertTest(uint64_t key_num) {
 
   ////////////////////////////////////////////
   // Test read
-  std::vector<uint64_t> v{};
+  std::vector<ValueType> v{};
   v.reserve(100);
 
   start = std::chrono::system_clock::now();
@@ -120,7 +128,7 @@ void UnorderedMapSequentialInsertTest(uint64_t key_num) {
   for(int j = 0;j < iter;j++) {
     // Read 1 million keys from std::map
     for(uint64_t i = 0;i < key_num;i++) {
-      uint64_t t = test_map.find(i)->second;
+      const ValueType &t = test_map.find(i)->second;
 
       v.push_back(t);
       v.clear();
