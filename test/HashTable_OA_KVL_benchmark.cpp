@@ -65,6 +65,16 @@ void SequentialInsertTest(uint64_t key_num) {
   std::cout << "Maximum probe length: " \
             << test_map.GetMaxSearchProbeLength()
             << std::endl;
+            
+  double mean = test_map.GetMeanSearchProbeLength();
+            
+  std::cout << "Mean probe length: " \
+            << mean
+            << std::endl;
+            
+  std::cout << "Probe length standard deviation: " \
+            << test_map.GetStdDevSearchProbeLength(mean)
+            << std::endl;
 
   return;
 }
@@ -74,7 +84,7 @@ void UnorderedMapSequentialInsertTest(uint64_t key_num) {
   start = std::chrono::system_clock::now();
 
   // Insert 1 million keys into std::map
-  std::unordered_multimap<uint64_t, uint64_t> test_map{};
+  std::unordered_multimap<uint64_t, uint64_t, SimpleInt64Hasher> test_map{};
   for(uint64_t i = 0;i < key_num;i++) {
     test_map.insert({i, i});
   }
