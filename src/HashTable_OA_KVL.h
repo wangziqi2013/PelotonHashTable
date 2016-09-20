@@ -1291,6 +1291,45 @@ class HashTable_OA_KVL {
     
     return max_count;
   }
+
+  /*
+   * GetMeanSearchProbeLength() - Returns the average length of sequences
+   */
+  double GetMeanSearchProbeLength() const {
+    HashEntry *entry_p = entry_list_p;
+    uint64_t count = 1;
+    
+    uint64_t total_count = 0;
+    uint64_t sequence_count = 0;
+    
+    bool previous_valid = false;
+
+    // Loop through every entry and reset counter for every end point
+    // of searching probe
+    for(uint64_t i = 0;i < entry_count;i++) {
+      if(entry_p->IsProbeEndForSearch() == true) {
+        // Since we do not count invalid element as sequence of
+        // length 1
+        if(previous_valid == true) {
+          // This marks the end of a sequence, so we add the sequence
+          // length into total length and increament seq count
+          total_count += count;
+          sequence_count++;
+        }
+
+        count = 1;
+        previous_valid = false;
+      } else {
+        count++;
+        previous_valid = true;
+      }
+
+      entry_p++;
+    }
+
+    return static_cast<double>(total_count) / \
+           static_cast<double>(sequence_count);
+  }
 };
 
 }
