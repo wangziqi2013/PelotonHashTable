@@ -40,7 +40,7 @@ class LoadFactorHalfFull {
    *
    * This will be only called during initialization and table resizing
    */
-  uint64_t operator()(uint64_t table_size) {
+  inline uint64_t operator()(uint64_t table_size) const {
     return table_size >> 1;
   }
 };
@@ -56,7 +56,7 @@ class LoadFactorThreeFourthFull {
    *
    * This will be only called during initialization and table resizing
    */
-  uint64_t operator()(uint64_t table_size) {
+  inline uint64_t operator()(uint64_t table_size) const {
     return (table_size >> 1) | (table_size >> 2);
   }
 };
@@ -73,7 +73,14 @@ class LoadFactorThreeFourthFull {
  */
 class SimpleInt64Hasher {
  public:
-  uint64_t operator()(uint64_t value) {
+   
+  /*
+   * operator()() - Mimics function call
+   *
+   * Note that this function must be denoted as const since in STL all
+   * hashers are stored as a constant object
+   */
+  inline uint64_t operator()(uint64_t value) const {
     //
     // The following code segment is copied from MurmurHash3, and is used
     // as an answer on the Internet:
@@ -95,7 +102,7 @@ class SimpleInt64Hasher {
  */
 class ConstantZero {
  public:
-  uint64_t operator()(uint64_t value) {
+  inline uint64_t operator()(uint64_t value) const {
     return 0;
   }
 };
