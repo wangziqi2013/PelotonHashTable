@@ -18,7 +18,7 @@ void SequentialInsertTest(uint64_t key_num) {
                    uint64_t,
                    SimpleInt64Hasher,
                    std::equal_to<uint64_t>,
-                   LoadFactorThreeFourthFull> test_map{1024};
+                   LoadFactorPercent<98>> test_map{1024};
   for(uint64_t i = 0;i < key_num;i++) {
     test_map.Insert(i, i);
   }
@@ -53,6 +53,8 @@ void SequentialInsertTest(uint64_t key_num) {
   elapsed_seconds = end - start;
   std::cout << "HashTable_OA_KVL: " << (1.0 * iter * key_num) / (1024 * 1024) / elapsed_seconds.count()
             << " million read/sec" << "\n";
+
+
 
   std::cout << "Maximum search sequence length: " \
             << test_map.GetMaxSearchSequenceLength() \
