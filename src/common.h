@@ -46,6 +46,22 @@ class LoadFactorHalfFull {
 };
 
 /*
+ * class LoadFactorHalfFull - Compute load factor as 0.75
+ */
+class LoadFactorThreeFourthFull {
+ public:
+
+  /*
+   * operator() - Computes the resize threshold given the current table size
+   *
+   * This will be only called during initialization and table resizing
+   */
+  uint64_t operator()(uint64_t table_size) {
+    return (table_size >> 1) | (table_size >> 2);
+  }
+};
+
+/*
  * class SimpleInt64Hasher - Simple hash function that hashes uint64_t
  *                           into a value that are distributed evenly
  *                           in the 0 and MAX interval
