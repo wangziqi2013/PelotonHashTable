@@ -1258,6 +1258,39 @@ class HashTable_OA_KVL {
 
     return;
   }
+  
+  // Statistical data
+ public:
+   
+  /*
+   * GetMaxSearchProbeLength() - Return the maximum run-length of searching
+   *
+   * This function walks through all hash entries and compute the maximum
+   * length of the probing sequence
+   */
+  uint64_t GetMaxSearchProbeLength() const {
+    HashEntry *entry_p = entry_list_p;
+    uint64_t count = 0;
+    uint64_t max_count = 0;
+    
+    // Loop through every entry and reset counter for every end point
+    // of searching probe
+    for(uint64_t i = 0;i < entry_count;i++) {
+      if(entry_p->IsProbeEndForSearch() == true) {
+        if(count > max_count) {
+          max_count = count;
+        }
+        
+        count = 0;
+      } else {
+        count++;
+      }
+      
+      entry_p++;
+    }
+    
+    return count;
+  }
 };
 
 }
