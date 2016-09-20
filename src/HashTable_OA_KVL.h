@@ -1270,7 +1270,7 @@ class HashTable_OA_KVL {
    */
   uint64_t GetMaxSearchProbeLength() const {
     HashEntry *entry_p = entry_list_p;
-    uint64_t count = 0;
+    uint64_t count = 1;
     uint64_t max_count = 0;
     
     // Loop through every entry and reset counter for every end point
@@ -1281,7 +1281,7 @@ class HashTable_OA_KVL {
           max_count = count;
         }
         
-        count = 0;
+        count = 1;
       } else {
         count++;
       }
@@ -1289,7 +1289,7 @@ class HashTable_OA_KVL {
       entry_p++;
     }
     
-    return count;
+    return max_count;
   }
 };
 
