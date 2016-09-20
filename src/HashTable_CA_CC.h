@@ -241,6 +241,16 @@ class HashTable_CA_CC {
     slot_count = 0x0000000000000001 << effective_bits;
     index_mask = entry_count - 1;
     
+    // If slot count proposed by the caller is a power of 2 then
+    // we have 1 more bit shifted, and then just shift it back
+    if((slot_count >> 1) == slot_count) {
+      slot_count >>= 1;
+      index_mask >>= 1;
+    }
+    
+    // This will be the next_p of the first inserted entry
+    dummy_entry.next_p = nullptr;
+    
     entry_p_list_p = new HashEntry*[slot_count];
     memset(entry_p_list_p, 0x0, sizeof(void *) * slot_count);
     
@@ -251,21 +261,22 @@ class HashTable_CA_CC {
   
   /*
    * Destructor - Frees the array and all entries
+   *
+   * Note that we do not have to traverse each slot since all entries are
+   * linked together as a singly linked list
    */
   ~HashTable_CA_CC() {
-    for(uint64_t i = 0;i < slot_count;i++) {
-      HashEntry *entry_p = entry_p_list_p[i];
+    HashEntry *entry_p = dummy_entry.next_p;
+    
+    while(entry_p != nullptr) {
+      // Save the next pointer first
+      HashEntry *temp = entry_p->next_p;
       
-      while(entry_p != nullptr) {
-        // Save the next pointer first
-        HashEntry *temp = entry_p->next_p;
-        
-        // Then free the entry
-        delete entry_p;
-        
-        // Use this to continue looping
-        entry_p = temp;
-      }
+      // Then free the entry
+      delete entry_p;
+      
+      // Use this to continue looping
+      entry_p = temp;
     }
     
     // Also free the pointer array
