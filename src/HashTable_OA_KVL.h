@@ -7,6 +7,7 @@
 #include <functional>
 #include <type_traits>
 #include <cstring>
+#include <cmath>
 
 namespace peloton {
 namespace index {
@@ -1373,6 +1374,76 @@ class HashTable_OA_KVL {
     }
 
     return max_distance;
+  }
+  
+  /*
+   * GetMeanSearchProbeLength() - Return the average length of probing
+   *                              for all keys
+   */
+  double GetMeanSearchProbeLength() {
+    HashEntry *entry_p = entry_list_p;
+    uint64_t total_distance = 0;
+    uint64_t key_count = 0;
+
+    // Loop through every entry and reset counter for every end point
+    // of searching probe
+    for(uint64_t i = 0;i < entry_count;i++) {
+      if(entry_p->IsProbeEndForSearch() == false) {
+        uint64_t index = entry_p->hash_value & index_mask;
+
+        uint64_t distance = i - index;
+
+        // Need to consider wrap back in which case
+        // the i is actually out of bound
+        if(i < index) {
+          distance = i + entry_count - index;
+        }
+        
+        total_distance += distance;
+        key_count++;
+      }
+
+      entry_p++;
+    }
+
+    return static_cast<double>(total_distance) / \
+           static_cast<double>(key_count);
+  }
+  
+  /*
+   * GetStdDevSearchProbeLength() - Return the standard deviation of the
+   *                                search probe length
+   */
+  double GetStdDevSearchProbeLength(double mean) {
+    HashEntry *entry_p = entry_list_p;
+    
+    double diff_sum = 0.0;
+    uint64_t key_count = 0;
+
+    // Loop through every entry and reset counter for every end point
+    // of searching probe
+    for(uint64_t i = 0;i < entry_count;i++) {
+      if(entry_p->IsProbeEndForSearch() == false) {
+        uint64_t index = entry_p->hash_value & index_mask;
+
+        uint64_t distance = i - index;
+
+        // Need to consider wrap back in which case
+        // the i is actually out of bound
+        if(i < index) {
+          distance = i + entry_count - index;
+        }
+
+        double diff = (static_cast<uint64_t>(distance) - mean);
+        diff_sum += diff * diff;
+        
+        key_count++;
+      }
+
+      entry_p++;
+    }
+    
+    return diff_sum / static_cast<double>(key_count);
   }
 };
 
