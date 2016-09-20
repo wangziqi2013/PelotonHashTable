@@ -1263,12 +1263,17 @@ class HashTable_OA_KVL {
  public:
    
   /*
-   * GetMaxSearchProbeLength() - Return the maximum run-length of searching
+   * GetMaxSearchSequenceLength() - Return the maximum length of a sequence in
+   *                                the hash table
+   *
+   * A search sequence is defined as consecutive range of entries where each
+   * entry has a valid key and at least one valid value, or is deleted, since
+   * we say search sequence
    *
    * This function walks through all hash entries and compute the maximum
    * length of the probing sequence
    */
-  uint64_t GetMaxSearchProbeLength() const {
+  uint64_t GetMaxSearchSequenceLength() const {
     HashEntry *entry_p = entry_list_p;
     uint64_t count = 1;
     uint64_t max_count = 0;
@@ -1293,9 +1298,9 @@ class HashTable_OA_KVL {
   }
 
   /*
-   * GetMeanSearchProbeLength() - Returns the average length of sequences
+   * GetMeanSearchSequenceLength() - Returns the average length of sequences
    */
-  double GetMeanSearchProbeLength() const {
+  double GetMeanSearchSequenceLength() const {
     HashEntry *entry_p = entry_list_p;
     uint64_t count = 1;
     
@@ -1329,6 +1334,45 @@ class HashTable_OA_KVL {
 
     return static_cast<double>(total_count) / \
            static_cast<double>(sequence_count);
+  }
+  
+  /*
+   * GetMaxSearchProbeLength() - Get the maximum probe length among
+   *                             all existing keys
+   *
+   * Note that probe length for a key is upper bounded by the length
+   * of the sequence that key-value entry is in.
+   *
+   * We define the probing length as the distance between the probing start
+   * point to the place where the entry is put
+   */
+  uint64_t GetMaxSearchProbeLength() {
+    HashEntry *entry_p = entry_list_p;
+    uint64_t max_distance = 0;
+
+    // Loop through every entry and reset counter for every end point
+    // of searching probe
+    for(uint64_t i = 0;i < entry_count;i++) {
+      if(entry_p->IsProbeEndForSearch() == false) {
+        uint64_t index = entry_p->hash_value & index_mask;
+
+        uint64_t distance = i - index;
+        
+        // Need to consider wrap back in which case
+        // the i is actually out of bound
+        if(i < index) {
+          distance = i + entry_count - index;
+        }
+        
+        if(distance > max_distance) {
+          max_distance = distance;
+        }
+      }
+
+      entry_p++;
+    }
+
+    return max_distance;
   }
 };
 
