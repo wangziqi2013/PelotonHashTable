@@ -1,5 +1,5 @@
 
-CXX=g++
+CXX=g++-5
 CXXFLAGS=-Wall -Werror -std=c++11
 OPT_FLAGS=-g
 
