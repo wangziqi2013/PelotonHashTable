@@ -21,6 +21,7 @@ void SequentialInsertTest(uint64_t key_num) {
                    LoadFactorPercent<98>> test_map{1024};
   for(uint64_t i = 0;i < key_num;i++) {
     test_map.Insert(i, i);
+    //test_map.Insert(i, i + 1);
   }
 
   end = std::chrono::system_clock::now();
@@ -60,6 +61,10 @@ void SequentialInsertTest(uint64_t key_num) {
             << "Resize threshold = " \
             << test_map.GetResizeThreshold()
             << std::endl;
+            
+  std::cout << "Load factor = " \
+            << test_map.GetLoadFactor() \
+            << std::endl;
 
   std::cout << "Maximum search sequence length: " \
             << test_map.GetMaxSearchSequenceLength() \
@@ -94,6 +99,7 @@ void UnorderedMapSequentialInsertTest(uint64_t key_num) {
   std::unordered_multimap<uint64_t, uint64_t, SimpleInt64Hasher> test_map{};
   for(uint64_t i = 0;i < key_num;i++) {
     test_map.insert({i, i});
+    //test_map.insert({i, i + 1});
   }
 
   end = std::chrono::system_clock::now();
