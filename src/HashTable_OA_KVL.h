@@ -887,7 +887,9 @@ class HashTable_OA_KVL {
   /*
    * GetValue() - Return a pointer to value and number of values
    *
-   * The first pointer is returned as
+   * The first pointer is returned as a pointer into the ValueType array
+   * and the second pointer is returned as the number of elements to
+   * fetch as values
    */
   std::pair<ValueType *, uint32_t> GetValue(const KeyType &key) {
     HashEntry *entry_p = ProbeForSearch(key);
@@ -904,6 +906,30 @@ class HashTable_OA_KVL {
     }
     
     return std::make_pair(&entry_p->value.data, 1);
+  }
+  
+  /*
+   * GetFirstValue() - Get the first value stored in the hash table
+   *
+   * This function only fetches one value from the map even if there are
+   * multiple values, to save some overhead if only the first value is cared
+   * about
+   */
+  ValueType *GetFirstValue(const KeyType &key) {
+    HashEntry *entry_p = ProbeForSearch(key);
+
+    // There could be three results:
+    //   1. Key not found, return nullptr and value count = 0
+    //   2. Key found with > 1 values, return pointer to starting of
+    //      the value type array
+    //   3. There is only 1 value, retuen the inlined value object
+    if(entry_p == nullptr) {
+      return nullptr;
+    } else if(entry_p->HasKeyValueList() == true) {
+      &entry_p->kv_p->data[0].data;
+    }
+
+    return &entry_p->value.data;
   }
 
  private:
