@@ -38,11 +38,7 @@ template <typename KeyType,
           typename KeyEqualityChecker = std::equal_to<KeyType>>
 class HashTable_CA_CC {
  private:
-  // If collision chain is longer than this then we double the size of the
-  // hash table and rehash
-  // (It was 128 in Peloton LLVM codegen hash table!!!)
-  static constexpr int DEFAULT_CC_MAX_LENGTH = 8;
-  
+   
   // The size of a typical page
   static constexpr uint64_t PAGE_SIZE = 4096;
   
@@ -81,6 +77,16 @@ class HashTable_CA_CC {
               const ValueType *value) :
       hash_value{p_hash_value},
       next_p{p_next_p},
+      kv_pair{key, value}
+    {}
+    
+    /*
+     * Constructor - This one does not initialize next pointer
+     */
+    HashEntry(uint64_t p_hash_value,
+              const KeyType &key,
+              const ValueType *value) :
+      hash_value{p_hash_value},
       kv_pair{key, value}
     {}
   };
@@ -124,6 +130,9 @@ class HashTable_CA_CC {
    * new entry after the one currently pointed to; Otherwise it installs
    * the new entry after the dummy entry, and redirects the slot that currently
    * points to the next element of the dummy to point to the new element
+   *
+   * Note that this function does not increase entry count since it is also
+   * called by the resize routine
    */
   void InsertIntoSlot(HashEntry *entry_p, uint64_t index) {
     assert(index < slot_count);
@@ -291,16 +300,26 @@ class HashTable_CA_CC {
    * This operation does not invalidate any iterator on existing entries
    */
   void Insert(const KeyType &key, const ValueType &value) {
+    // Let's resize
+    if(entry_count == resize_threshold) {
+      Resize();
+    }
+    
     uint64_t hash_value = key_hash_obj(key);
     uint64_t index = index_mask & hash_value;
     
     // This should be done for every insert
     entry_count++;
     
-    // Update the pointer of the slot by allocating a new entry
-    entry_p_list_p[index] = \
-      new HashEntry{hash_value, entry_p_list_p[index], key, value};
-    assert(entry_p_list_p[index] != nullptr);
+    HashEntry *entry_p = \
+      new HashEntry{hash_value, key, value};
+    assert(entry_p != nullptr);
+    
+    // Insert into the global linked list; This does not increase
+    // entry count
+    InsertIntoSlot(entry_p, index);
+    
+    entry_count++;
     
     return;
   }
