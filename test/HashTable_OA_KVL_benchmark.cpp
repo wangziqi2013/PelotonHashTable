@@ -57,6 +57,10 @@ void SequentialInsertTest(uint64_t key_num) {
   std::cout << "Maximum probing length: " \
             << test_map.GetMaxSearchProbeLength() \
             << std::endl;
+            
+  std::cout << "Mean probing length: " \
+            << test_map.GetMeanSearchProbeLength()
+            << std::endl;
 
   return;
 }
