@@ -805,6 +805,30 @@ class HashTable_OA_KVL {
   }
   
   /*
+   * GetEntryCount() - Return the number of entries in the array
+   */
+  uint64_t GetEntryCount() const {
+    return entry_count;
+  }
+  
+  /*
+   * GetReizeThreshold() - Return the resize threshold which is the maximum
+   *                       number of active entries allowed in the table
+   */
+  uint64_t GetResizeThreshold() const {
+    return resize_threshold;
+  }
+  
+  /*
+   * GetLoadFactor() - Returns the current load factor as a double
+   *                   between 0.0 - 1.0
+   */
+  double GetLoadFactor() const {
+    return static_cast<double>(active_entry_count) / \
+           static_cast<double>(entry_count);
+  }
+  
+  /*
    * Insert() - Inserts a value into the hash table
    *
    * The key and value will be copy-constructed into the table
