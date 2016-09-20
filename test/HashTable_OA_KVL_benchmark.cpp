@@ -9,12 +9,6 @@
 using namespace peloton;
 using namespace index;
 
-template <size_t sz>
-class FixedLenValue {
- public:
-  char data[sz];  
-};
-
 using ValueType = FixedLenValue<64>;
 
 void SequentialInsertTest(uint64_t key_num) {

@@ -131,6 +131,16 @@ class ConstantZero {
 };
 
 /*
+ * class FixedLenValue - This is an object that represents a fixed length
+ *                       object which is used for testing
+ */
+template <size_t sz>
+class FixedLenValue {
+ public:
+  char data[sz];
+};
+
+/*
  * class Data - Explicitlly managed data wrapping class
  *
  * This class could not be implicitly constructed or destroyed, and we
