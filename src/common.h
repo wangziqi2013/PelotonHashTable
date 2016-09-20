@@ -62,6 +62,29 @@ class LoadFactorThreeFourthFull {
 };
 
 /*
+ * class LoadFactorPercent - Compute load factor as a percentage value
+ *
+ * This class is templatized and encodes the load factor as template
+ * argument
+ *
+ * In the case that division is not exact, we always round it down to avoid
+ * too high load factor leading to an entirely full table
+ */
+template<uint64_t percentage>
+class LoadFactorPercent {
+ public:
+
+  /*
+   * operator() - Computes the resize threshold given the current table size
+   *
+   * This will be only called during initialization and table resizing
+   */
+  inline uint64_t operator()(uint64_t table_size) const {
+    return table_size * percentage / 100;
+  }
+};
+
+/*
  * class SimpleInt64Hasher - Simple hash function that hashes uint64_t
  *                           into a value that are distributed evenly
  *                           in the 0 and MAX interval
