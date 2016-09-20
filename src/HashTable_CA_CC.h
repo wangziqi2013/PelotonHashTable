@@ -48,6 +48,7 @@ class HashTable_CA_CC {
   
   // Let the first array fill one entire page
   static constexpr uint64_t INIT_SLOT_COUNT = PAGE_SIZE / sizeof(void *);
+  
   /*
    * class HashEntry() - The hash entry for holding key and value
    *
@@ -87,19 +88,26 @@ class HashTable_CA_CC {
   // This is an array holding HashEntry * as the head of a collision chain
   HashEntry **entry_p_list_p;
   
+  // This is used as a dummy entry, which is the previous element for any
+  // new element inserted into the hash table
+  // The next pointer should be initialized to nullptr to mark the last
+  // element
+  HashEntry dummy_entry;
+  
   // Used to mask off insignificant bits for computing the index
   uint64_t index_mask;
   
   // Size of the entry pointer list
   uint64_t slot_count;
   
-  // Number of HashEntry in this hash table
+  // Number of HashEntry in this hash table (which could be larger than
+  // slot count)
   uint64_t entry_count;
   
-  // This is the length of the chain
-  // If the length of any collision chain exceeds this threshold then
-  // a rehash will be scheduled
-  // Note that this will not be changed even if the size of the array changes
+  // This is the totoal number of entries for the current
+  // table size
+  // Note that this is different from the load factor of an open addressing
+  // hash table in a sense that load factor here should normally be > 1.0
   int resize_threshold;
   
   // Specialized function for computing hash and comparison
@@ -109,13 +117,80 @@ class HashTable_CA_CC {
  private:
    
   /*
+   * InsertIntoSlot() - Inserts a node into a certain slot
+   *
+   * This function distinguishes two cases. If the slot has already been
+   * been occupied by some existing entries, then it simply inserts the
+   * new entry after the one currently pointed to; Otherwise it installs
+   * the new entry after the dummy entry, and redirects the slot that currently
+   * points to the next element of the dummy to point to the new element
+   */
+  void InsertIntoSlot(HashEntry *entry_p, uint64_t index) {
+    assert(index < slot_count);
+    
+    HashEntry *p = entry_p_list_p[index];
+    
+    // This entry has not yet been inserted into before
+    // i.e. there is no next element in the hash chain
+    if(p == nullptr) {
+      // Since the slot was empty just assign the entry to the slot
+      entry_p_list_p[index] = entry_p;
+      
+      // And then let the previous first entry to be the second entry
+      // i.e. pointed to by entry_p
+      entry_p->next_p = dummy_entry.next_p;
+      
+      // If the hash table is empty then just insert it without
+      // redirecting the slot pointing to the element after dummy_entry
+      if(dummy_entry.next_p == nullptr) {
+        dummy_entry.next_p = entry_p;
+        entry_p->next_p = nullptr;
+        
+        entry_p_list_p[index] = entry_p;
+        
+        return;
+      }
+      
+      // We cuold only do this if we know the dummy entry has a
+      // next entry record, o.w. segment fault
+      uint64_t prev_index = dummy_entry.next_p->hash_value & index_mask;
+      
+      // It must be reflecsive (i.e. it must be the first element of the slot
+      // derived from its hash value; otherwise no other elements are before
+      // it and therefore the first element pointed to by the slot)
+      assert(entry_p_list_p[prev_index] == dummy_entry.next_p);
+      
+      // Redirect the slot to point to the new entry
+      entry_p_list_p[prev_index] = entry_p;
+      
+      // Make it the first entry
+      dummy_entry.next_p = entry_p;
+      
+      return;
+    }
+    
+    // In the case where the slot already has element, we just insert
+    // the entry as the new first element after the slot's pointer
+    
+    // Note that here we do not modify entry_p_list_p[index] itself but rather
+    // the next element is changed
+    entry_p->next_p = p;
+    entry_p_list_p[index]->next_p = entry_p;
+    
+    return;
+  }
+   
+  /*
    * Resize() - Double the size of the array and scatter elements
    *            into their new position
    */
   void Resize() {
-    // Preserver these two values
+    // Save these two values before changing them
     uint64_t old_slot_count = slot_count;
-    HashEntry **old_entry_p_list_p = entry_p_list_p;
+
+    // We could free it here right now since we traverse the linked
+    // list rather than using this array
+    delete[] entry_p_list_p;
     
     slot_count <<= 1;
     index_mask = slot_count - 1;
@@ -124,30 +199,22 @@ class HashTable_CA_CC {
     entry_p_list_p = new HashEntry*[slot_count];
     memset(entry_p_list_p, 0x0, sizeof(void *) * slot_count);
     
-    // Iterate through all slots first
-    for(uint64_t i = 0;i < old_slot_count;i++) {
-      // This points to the first element of the collision chain
-      HashEntry *entry_p = old_entry_p_list_p[i];
-      
-      while(entry_p != nullptr) {
-        // Mask it with the new index mask
-        uint64_t new_index = entry_p->hash_value & index_mask;
-        
-        // Save the next pointer first
-        HashEntry *temp = entry_p->next_p;
-        
-        // Link it to the new slot's chain
-        entry_p->next_p = entry_p_list_p[new_index];
-        // Let the new slot point to it also
-        entry_p_list_p[new_index] = entry_p;
-        
-        // And then use this pointe to continue the loop
-        entry_p = temp;
-      }
-    }
+    // Keep this as the starting point of resizing
+    HashEntry *entry_p = dummy_entry.next_p;
     
-    // Free the memory for old entry pointer list
-    delete[] old_entry_p_list_p;
+    // Set this as if we are inserting into a fresh new hash table
+    dummy_entry.next_p = nullptr;
+    
+    while(entry_p != nullptr) {
+      // Mask it with the new index mask
+      uint64_t new_index = entry_p->hash_value & index_mask;
+      
+      InsertIntoSlot(entry_p, new_index);
+      
+      // Go to the entry in current valid slots until we have reached
+      // to the end
+      entry_p++;
+    }
     
     return;
   }
