@@ -918,16 +918,34 @@ class HashTable_OA_KVL {
   ValueType *GetFirstValue(const KeyType &key) {
     HashEntry *entry_p = ProbeForSearch(key);
 
-    // There could be three results:
-    //   1. Key not found, return nullptr and value count = 0
-    //   2. Key found with > 1 values, return pointer to starting of
-    //      the value type array
-    //   3. There is only 1 value, retuen the inlined value object
     if(entry_p == nullptr) {
       return nullptr;
     } else if(entry_p->HasKeyValueList() == true) {
       return &entry_p->kv_p->data[0].data;
     }
+
+    return &entry_p->value.data;
+  }
+  
+  /*
+   * GetOnlyInlinedValue() - Return inline values for an entry found
+   *
+   * This function could only be called:
+   *
+   *   1. The key does not exist in the hash table
+   *   2. The key has only one value, and delete() has never been
+   *      called on that key (i.e. the value is truly stored in-line)
+   */
+  ValueType *GetOnlyInlinedValue(const KeyType &key) {
+    HashEntry *entry_p = ProbeForSearch(key);
+
+    if(entry_p == nullptr) {
+      return nullptr;
+    }
+    
+    // This must hold since the caller assumes there could only be
+    // inlined value
+    assert(entry_p->HasKeyValueList() == false);
 
     return &entry_p->value.data;
   }
