@@ -54,6 +54,10 @@ void SequentialInsertTest(uint64_t key_num) {
   std::cout << "HashTable_OA_KVL: " << (1.0 * iter * key_num) / (1024 * 1024) / elapsed_seconds.count()
             << " million read/sec" << "\n";
 
+  std::cout << "Maximum probing length: " \
+            << test_map.GetMaxSearchProbeLength() \
+            << std::endl;
+
   return;
 }
 
