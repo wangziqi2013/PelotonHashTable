@@ -36,7 +36,7 @@ template <typename KeyType,
           typename KeyHashFunc = std::hash<KeyType>,
           typename KeyEqualityChecker = std::equal_to<KeyType>,
           typename LoadFactorCalculator = LoadFactorPercent<400>>
-class HashTable_CA_CC {
+class HashTable_CA_SCC {
  private:
    
   // The size of a typical page
@@ -46,7 +46,7 @@ class HashTable_CA_CC {
   static constexpr uint64_t INIT_SLOT_COUNT = PAGE_SIZE / sizeof(void *);
   
   /*
-   * class HashEntry() - The hash entry for holding key and value
+   * class HashEntry - The hash entry for holding key and value
    *
    * Note that for an optimal use of the data layout, we put hash value and
    * next element pointer together, since if key and value requires even
@@ -54,7 +54,7 @@ class HashTable_CA_CC {
    * more compact layout
    */
   class HashEntry {
-    friend class HashTable_CA_CC;
+    friend class HashTable_CA_SCC;
     
    private:
     // Hash value for fast objecy comparison
@@ -74,7 +74,7 @@ class HashTable_CA_CC {
     HashEntry(uint64_t p_hash_value,
               HashEntry *p_next_p,
               const KeyType &key,
-              const ValueType *value) :
+              const ValueType &value) :
       hash_value{p_hash_value},
       next_p{p_next_p},
       kv_pair{key, value}
@@ -170,10 +170,10 @@ class HashTable_CA_CC {
   /*
    * Constructor
    */
-  HashTable_CA_CC(uint64_t p_slot_count = INIT_SLOT_COUNT,
-                  const KeyHashFunc &p_key_hash_obj = KeyHashFunc{},
-                  const KeyEqualityChecker &p_key_eq_obj = KeyEqualityChecker{},
-                  const LoadFactorCalculator &p_lfc = LoadFactorCalculator{}) :
+  HashTable_CA_SCC(uint64_t p_slot_count = INIT_SLOT_COUNT,
+                   const KeyHashFunc &p_key_hash_obj = KeyHashFunc{},
+                   const KeyEqualityChecker &p_key_eq_obj = KeyEqualityChecker{},
+                   const LoadFactorCalculator &p_lfc = LoadFactorCalculator{}) :
     slot_count{p_slot_count},
     entry_count{0},
     key_hash_obj{p_key_hash_obj},
@@ -211,15 +211,14 @@ class HashTable_CA_CC {
    * Note that we do not have to traverse each slot since all entries are
    * linked together as a singly linked list
    */
-  ~HashTable_CA_CC() {
-    HashEntry *entry_p = dummy_entry.next_p;
-    
+  ~HashTable_CA_SCC() {
     for(uint64_t i = 0;i < slot_count;i++) {
       // This is the starting point of deleting nodes in the hash table
       HashEntry *entry_p = entry_p_list_p[i];
       
       while(entry_p != nullptr) {
-        // Save the next pointer first
+        // Save the next pointer first since after delete the content no
+        // longer remain valid
         HashEntry *temp = entry_p->next_p;
 
         // Then free the entry
