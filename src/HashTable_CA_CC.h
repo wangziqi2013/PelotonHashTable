@@ -31,11 +31,15 @@ namespace index {
  *      by pointers. However for a good hash function the length of the
  *      collision chain should be short
  *   5. Cache performance is worse since pointer chasing reduces locality
+ *
+ * Note that the load factor of this calss defaults to 400% which means that
+ * the number of entries when resize is trigger equals 4 * number of slots
  */
 template <typename KeyType,
           typename ValueType,
           typename KeyHashFunc = std::hash<KeyType>,
-          typename KeyEqualityChecker = std::equal_to<KeyType>>
+          typename KeyEqualityChecker = std::equal_to<KeyType>,
+          typename LoadFactorCalculator = LoadFactorPercent<400>>
 class HashTable_CA_CC {
  private:
    
@@ -119,6 +123,7 @@ class HashTable_CA_CC {
   // Specialized function for computing hash and comparison
   KeyHashFunc key_hash_obj;
   KeyEqualityChecker key_eq_obj;
+  LoadFactorCalculator lfc;
   
  private:
    
@@ -192,17 +197,23 @@ class HashTable_CA_CC {
   /*
    * Resize() - Double the size of the array and scatter elements
    *            into their new position
+   *
+   * This function updates slot count, resize threshold and index mask
+   * and also the pointer to the HashEntry * array
    */
   void Resize() {
-    // Save these two values before changing them
-    uint64_t old_slot_count = slot_count;
-
+    // Entry count is the number of HashEntry object
+    assert(entry_count == resize_threshold);
+    
     // We could free it here right now since we traverse the linked
     // list rather than using this array
     delete[] entry_p_list_p;
     
     slot_count <<= 1;
     index_mask = slot_count - 1;
+    
+    // Compute the new slot count after updating it
+    resize_threshold = lfc(slot_count);
     
     // Allocate a new chunk of memory to hold collision chains
     entry_p_list_p = new HashEntry*[slot_count];
@@ -236,12 +247,14 @@ class HashTable_CA_CC {
   HashTable_CA_CC(uint64_t p_slot_count = INIT_SLOT_COUNT,
                   int p_resize_threshold = DEFAULT_CC_MAX_LENGTH,
                   const KeyHashFunc &p_key_hash_obj = KeyHashFunc{},
-                  const KeyEqualityChecker &p_key_eq_obj = KeyEqualityChecker{}) :
+                  const KeyEqualityChecker &p_key_eq_obj = KeyEqualityChecker{},
+                  const LoadFactorCalculator &p_lfc = LoadFactorCalculator{}) :
     slot_count{p_slot_count},
     entry_count{0},
     resize_threshold{p_resize_threshold},
     key_hash_obj{p_key_hash_obj},
-    key_eq_obj{p_key_eq_obj} {
+    key_eq_obj{p_key_eq_obj},
+    lfc{p_lfc} {
     // First round it up to power of 2
     int leading_zero = __builtin_clzl(slot_count);
     int effective_bits = 64 - leading_zero;
@@ -256,6 +269,9 @@ class HashTable_CA_CC {
       slot_count >>= 1;
       index_mask >>= 1;
     }
+    
+    // This is the number of entries required to perform resize
+    resize_threshold = lfc(slot_count);
     
     // This will be the next_p of the first inserted entry
     dummy_entry.next_p = nullptr;
@@ -319,6 +335,7 @@ class HashTable_CA_CC {
     // entry count
     InsertIntoSlot(entry_p, index);
     
+    // Do not forget this
     entry_count++;
     
     return;
