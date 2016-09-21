@@ -118,9 +118,9 @@ class HashTable_CA_CC {
     // Entry count is the number of HashEntry object
     assert(entry_count == resize_threshold);
     
+    // Save old pointers in order to traverse using them
     HashEntry **old_p = entry_p_list_p;
-    
-    
+    uint64_t old_slot_count = slot_count;
     
     slot_count <<= 1;
     index_mask = slot_count - 1;
@@ -135,24 +135,28 @@ class HashTable_CA_CC {
     // Initialize it with nullptr
     memset(entry_p_list_p, 0x0, sizeof(void *) * slot_count);
     
-    // Keep this as the starting point of resizing
-    HashEntry *entry_p = dummy_entry.next_p;
-    
-    // Set this as if we are inserting into a fresh new hash table
-    dummy_entry.next_p = nullptr;
-    
-    while(entry_p != nullptr) {
-      // Mask it with the new index mask
-      uint64_t new_index = entry_p->hash_value & index_mask;
+    for(uint64_t i = 0;i < old_slot_count;i++) {
+      // Make it the starting point of traversing each slot
+      HashEntry *entry_p = old_p[i];
       
-      // Need to save it first since its next_p will be changed
-      HashEntry *next_p = entry_p->next_p;
-      
-      InsertIntoSlot(entry_p, new_index);
-      
-      // Go to the entry in current valid slots until we have reached
-      // to the end
-      entry_p = next_p;
+      while(entry_p != nullptr) {
+        // Mask it with the new index mask
+        uint64_t new_index = entry_p->hash_value & index_mask;
+        
+        assert(new_index < slot_count);
+
+        // Need to save it first since its next_p will be changed
+        HashEntry *next_p = entry_p->next_p;
+
+        // Hook the entry onto the new slot
+        // Also Note that we changed entry_p->next_p here
+        entry_p->next_p = entry_p_list_p[new_index];
+        entry_p_list_p[new_index] = entry_p;
+
+        // Go to the entry in current valid slots until we have reached
+        // to the end
+        entry_p = next_p;
+      }
     }
     
     // Must remove it after traversing all slots
@@ -193,9 +197,6 @@ class HashTable_CA_CC {
     // This is the number of entries required to perform resize
     resize_threshold = lfc(slot_count);
     
-    // This will be the next_p of the first inserted entry
-    dummy_entry.next_p = nullptr;
-    
     entry_p_list_p = new HashEntry*[slot_count];
     memset(entry_p_list_p, 0x0, sizeof(void *) * slot_count);
     
@@ -213,6 +214,7 @@ class HashTable_CA_CC {
   ~HashTable_CA_CC() {
     HashEntry *entry_p = dummy_entry.next_p;
     
+    //for(uint64_t )
     while(entry_p != nullptr) {
       // Save the next pointer first
       HashEntry *temp = entry_p->next_p;
