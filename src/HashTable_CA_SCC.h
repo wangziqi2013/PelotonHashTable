@@ -256,12 +256,11 @@ class HashTable_CA_CC {
     
     // We do not initialize its next_p since it will not be relied on
     HashEntry *entry_p = \
-      new HashEntry{hash_value, key, value};
+      new HashEntry{hash_value, entry_p_list_p[index], key, value};
     assert(entry_p != nullptr);
     
-    // Insert into the global linked list; This does not increase
-    // entry count
-    InsertIntoSlot(entry_p, index);
+    // Assign the entry as the first element of the collision chain
+    entry_p_list_p[index] = entry_p;
     
     // Do not forget this
     entry_count++;
@@ -282,18 +281,10 @@ class HashTable_CA_CC {
     uint64_t index = index_mask & hash_value;
 
     HashEntry *entry_p = entry_p_list_p[index];
-    
-    // Special case: If key does not exist just return
-    if(entry_p == nullptr) {
-      return;
-    } else {
-      entry_p = entry_p->next_p;
-    }
 
     // Then loop through the collision chain and check hash value
     // as well as key to find values associated with it
-    while((entry_p != nullptr) && \
-          ((entry_p->hash_value & index_mask) == index)) {
+    while(entry_p != nullptr) {
             
       if(key_eq_obj(key, entry_p->kv_pair.first) == true) {
         cb(entry_p->kv_pair);
