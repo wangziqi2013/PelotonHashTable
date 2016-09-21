@@ -9,11 +9,11 @@ using HashTable = HashTable_CA_CC<uint64_t, uint64_t, SimpleInt64Hasher>;
 void BasicTest() {
   HashTable ht{30};
   
-  for(uint64_t i = 0;i < 128;i++) {
+  for(uint64_t i = 0;i < 1000;i++) {
     ht.Insert(i, i);
   }
   
-  for(uint64_t i = 0;i < 128;i++) {
+  for(uint64_t i = 0;i < 1000;i++) {
     std::vector<uint64_t> v{};
     
     ht.GetValue(i, &v);
