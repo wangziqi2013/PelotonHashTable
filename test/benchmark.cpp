@@ -1,6 +1,7 @@
 
 #include "../src/HashTable_OA_KVL.h"
 #include "../src/HashTable_CA_CC.h"
+#include "../src/HashTable_CA_SCC.h"
 #include <iostream>
 #include <random>
 #include <chrono>
@@ -194,6 +195,55 @@ void CA_CC_InsertTest(uint64_t key_num,
   return;
 }
 
+void CA_SCC_InsertTest(uint64_t key_num,
+                       std::function<uint64_t(uint64_t)> get_next_key) {
+  std::chrono::time_point<std::chrono::system_clock> start, end;
+  start = std::chrono::system_clock::now();
+
+  // Insert 1 million keys into std::map
+  HashTable_CA_SCC<uint64_t,
+                   ValueType,
+                   SimpleInt64Hasher,
+                   std::equal_to<uint64_t>,
+                   LoadFactorPercent<400>> test_map{1024};
+  for(uint64_t i = 0;i < key_num;i++) {
+    test_map.Insert(get_next_key(i), ValueType{});
+    //test_map.Insert(i, i + 1);
+  }
+
+  end = std::chrono::system_clock::now();
+
+  std::chrono::duration<double> elapsed_seconds = end - start;
+
+  std::cout << "HashTable_CA_SCC: " << 1.0 * key_num / (1024 * 1024) / elapsed_seconds.count()
+            << " million insertion/sec" << "\n";
+
+  ////////////////////////////////////////////
+  // Test read
+  std::vector<ValueType> v{};
+  v.reserve(100);
+
+  start = std::chrono::system_clock::now();
+
+  int iter = 10;
+  for(int j = 0;j < iter;j++) {
+    // Read 1 million keys from std::map
+    for(uint64_t i = 0;i < key_num;i++) {
+      test_map.GetValue(get_next_key(i), &v);
+
+      v.clear();
+    }
+  }
+
+  end = std::chrono::system_clock::now();
+
+  elapsed_seconds = end - start;
+  std::cout << "HashTable_CA_SCC: " << (1.0 * iter * key_num) / (1024 * 1024) / elapsed_seconds.count()
+            << " million read/sec" << "\n";
+
+  return;
+}
+
 /*
  * main() - Main test routine
  *
@@ -228,6 +278,7 @@ int main(int argc, char **argv) {
     OA_KVL_InsertTest(key_num, f);
     UnorderedMultimapInsertTest(key_num, f);
     CA_CC_InsertTest(key_num, f);
+    CA_SCC_InsertTest(key_num, f);
   } else if(strcmp(p, "--random") == 0) {
     uint64_t key_num = 6 * 1024 * 1024;
 
@@ -241,6 +292,7 @@ int main(int argc, char **argv) {
     OA_KVL_InsertTest(key_num, f);
     UnorderedMultimapInsertTest(key_num, f);
     CA_CC_InsertTest(key_num, f);
+    CA_SCC_InsertTest(key_num, f);
     
   } else {
     printf("Unknown argument: %s\n", p);
