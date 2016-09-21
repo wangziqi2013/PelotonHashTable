@@ -187,10 +187,40 @@ void CA_CC_SequentialInsertTest(uint64_t key_num) {
   return;
 }
 
-int main() {
-  SequentialInsertTest(6 * 1024 * 1024);
-  UnorderedMapSequentialInsertTest(6 * 1024 * 1024);
-  CA_CC_SequentialInsertTest(6 * 1024 * 1024);
+/*
+ * main() - Main test routine
+ *
+ * |------------------------|-----------------------------|
+ * |       Command          |         Explanation         |
+ * |------------------------|-----------------------------|
+ * | ./benchmark            | Prints help message         |
+ * | ./benchmark --seq      | Runs sequential test        |
+ * | ./benchmark --random   | Runs random workload test   |
+ * |------------------------|-----------------------------|
+ */
+int main(int argc, char **argv) {
+  // Make sure we have correct number of arguments
+  if(argc == 1) {
+    printf("Please use command line argument to run test suites!\n");
+    
+    return 0;
+  } else if(argc > 2) {
+    printf("Too many arguments\n");
+    
+    return 0;
+  }
+  
+  char *p = argv[1];
+  
+  if(strcmp(p, "--seq") == 0) {
+    SequentialInsertTest(6 * 1024 * 1024);
+    UnorderedMapSequentialInsertTest(6 * 1024 * 1024);
+    CA_CC_SequentialInsertTest(6 * 1024 * 1024);
+  } else if(strcmp(p, "--random") == 0) {
+
+  } else {
+    printf("Unknown argument: %s\n", p);
+  }
   
   return 0;
 }
