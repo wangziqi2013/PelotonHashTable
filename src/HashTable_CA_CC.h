@@ -242,7 +242,7 @@ class HashTable_CA_CC {
       
       // Go to the entry in current valid slots until we have reached
       // to the end
-      entry_p++;
+      entry_p = entry_p->next_p;
     }
     
     return;
@@ -268,7 +268,7 @@ class HashTable_CA_CC {
 
     // It has a 1 bit on the highest bit
     slot_count = 0x0000000000000001 << effective_bits;
-    index_mask = entry_count - 1;
+    index_mask = slot_count - 1;
     
     // If slot count proposed by the caller is a power of 2 then
     // we have 1 more bit shifted, and then just shift it back
