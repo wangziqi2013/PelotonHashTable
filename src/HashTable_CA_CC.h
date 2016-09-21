@@ -335,9 +335,6 @@ class HashTable_CA_CC {
     uint64_t hash_value = key_hash_obj(key);
     uint64_t index = index_mask & hash_value;
     
-    // This should be done for every insert
-    entry_count++;
-    
     HashEntry *entry_p = \
       new HashEntry{hash_value, key, value};
     assert(entry_p != nullptr);
