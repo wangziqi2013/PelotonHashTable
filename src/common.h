@@ -47,6 +47,12 @@ class LoadFactorHalfFull {
 
 /*
  * class LoadFactorHalfFull - Compute load factor as 0.75
+ *
+ * This is equivalent to LoadFactorPercent<75>, but it's faster by using
+ * shifts and bit OR rather than multiplication
+ *
+ * Of course as long as resizing is a relatively infrequent operation using
+ * slower operation is not a big deal (so you can remove it)
  */
 class LoadFactorThreeFourthFull {
  public:
@@ -77,7 +83,11 @@ class LoadFactorPercent {
   /*
    * operator() - Computes the resize threshold given the current table size
    *
-   * This will be only called during initialization and table resizing
+   * This will be only called during initialization and table resizing.
+   *
+   * Note that it is possible that the uint64_t gets overflowed, but this
+   * practically should never happen since the memory subsystem would explode
+   * first before your table size reaches that large
    */
   inline uint64_t operator()(uint64_t table_size) const {
     return table_size * percentage / 100;
