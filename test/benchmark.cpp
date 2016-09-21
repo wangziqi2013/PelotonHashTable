@@ -48,8 +48,10 @@ void OA_KVL_InsertTest(uint64_t key_num,
     for(uint64_t i = 0;i < key_num;i++) {
       ValueType *t = test_map.GetFirstValue(get_next_key(i));
 
-      v.push_back(*t);
-      v.clear();
+      if(t != nullptr) {
+        v.push_back(*t);
+        v.clear();
+      }
     }
   }
 
@@ -125,10 +127,12 @@ void UnorderedMultimapInsertTest(uint64_t key_num,
   for(int j = 0;j < iter;j++) {
     // Read 1 million keys from std::map
     for(uint64_t i = 0;i < key_num;i++) {
-      const ValueType &t = test_map.find(get_next_key(i))->second;
+      const auto it = test_map.find(get_next_key(i));
 
-      v.push_back(t);
-      v.clear();
+      if(it != test_map.end()) {
+        v.push_back(it->second);
+        v.clear();
+      }
     }
   }
 

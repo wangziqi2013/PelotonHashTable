@@ -185,7 +185,7 @@ class HashTable_OA_KVL {
         new_kvl_p->FillValue(i, *(data + i));
       }
       
-      dbg_printf("Resize finished\n");
+      //dbg_printf("Resize finished\n");
       
       return new_kvl_p;
     }
