@@ -1,4 +1,6 @@
 
+#pragma once
+
 #define DEBUG_PRINT
 
 #ifdef DEBUG_PRINT

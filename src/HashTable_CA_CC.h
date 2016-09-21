@@ -95,7 +95,7 @@ class HashTable_CA_CC {
      */
     HashEntry(uint64_t p_hash_value,
               const KeyType &key,
-              const ValueType *value) :
+              const ValueType &value) :
       hash_value{p_hash_value},
       kv_pair{key, value}
     {}
@@ -124,7 +124,7 @@ class HashTable_CA_CC {
   // table size
   // Note that this is different from the load factor of an open addressing
   // hash table in a sense that load factor here should normally be > 1.0
-  int resize_threshold;
+  uint64_t resize_threshold;
   
   // Specialized function for computing hash and comparison
   KeyHashFunc key_hash_obj;
@@ -223,6 +223,9 @@ class HashTable_CA_CC {
     
     // Allocate a new chunk of memory to hold collision chains
     entry_p_list_p = new HashEntry*[slot_count];
+    assert(entry_p_list_p != nullptr);
+    
+    // Initialize it with nullptr
     memset(entry_p_list_p, 0x0, sizeof(void *) * slot_count);
     
     // Keep this as the starting point of resizing
