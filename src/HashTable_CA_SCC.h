@@ -214,16 +214,20 @@ class HashTable_CA_CC {
   ~HashTable_CA_CC() {
     HashEntry *entry_p = dummy_entry.next_p;
     
-    //for(uint64_t )
-    while(entry_p != nullptr) {
-      // Save the next pointer first
-      HashEntry *temp = entry_p->next_p;
+    for(uint64_t i = 0;i < slot_count;i++) {
+      // This is the starting point of deleting nodes in the hash table
+      HashEntry *entry_p = entry_p_list_p[i];
       
-      // Then free the entry
-      delete entry_p;
-      
-      // Use this to continue looping
-      entry_p = temp;
+      while(entry_p != nullptr) {
+        // Save the next pointer first
+        HashEntry *temp = entry_p->next_p;
+
+        // Then free the entry
+        delete entry_p;
+
+        // Use this to continue looping
+        entry_p = temp;
+      }
     }
     
     // Also free the pointer array
