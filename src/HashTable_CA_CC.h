@@ -85,6 +85,12 @@ class HashTable_CA_CC {
     {}
     
     /*
+     * Constructor - This is used during table initialization for
+     *               the dummy entry
+     */
+    HashEntry() {}
+    
+    /*
      * Constructor - This one does not initialize next pointer
      */
     HashEntry(uint64_t p_hash_value,
@@ -245,13 +251,11 @@ class HashTable_CA_CC {
    * Constructor
    */
   HashTable_CA_CC(uint64_t p_slot_count = INIT_SLOT_COUNT,
-                  int p_resize_threshold = DEFAULT_CC_MAX_LENGTH,
                   const KeyHashFunc &p_key_hash_obj = KeyHashFunc{},
                   const KeyEqualityChecker &p_key_eq_obj = KeyEqualityChecker{},
                   const LoadFactorCalculator &p_lfc = LoadFactorCalculator{}) :
     slot_count{p_slot_count},
     entry_count{0},
-    resize_threshold{p_resize_threshold},
     key_hash_obj{p_key_hash_obj},
     key_eq_obj{p_key_eq_obj},
     lfc{p_lfc} {
@@ -319,6 +323,10 @@ class HashTable_CA_CC {
     // Let's resize
     if(entry_count == resize_threshold) {
       Resize();
+      
+      // Make sure that after each resize the entry count is always
+      // less than the resize threshold
+      assert(entry_count < resize_threshold);
     }
     
     uint64_t hash_value = key_hash_obj(key);
@@ -355,26 +363,22 @@ class HashTable_CA_CC {
 
     HashEntry *entry_p = entry_p_list_p[index];
 
-    int chain_length = 0;
+    // Special case: there is no entry for the key,
+    // i.e. key does not exist
+    if(entry_p == nullptr) {
+      return;
+    }
 
     // Then loop through the collision chain and check hash value
     // as well as key to find values associated with it
-    while(entry_p != nullptr) {
-      if(hash_value == entry_p->hash_value) {
-        if(key_eq_obj(key, entry_p->kv_pair.first) == true) {
-          cb(entry_p->kv_pair);
-        }
-      }
-
+    do {
       entry_p = entry_p->next_p;
-      chain_length++;
-    }
-    
-    // If the length of the delta chain is greater than or equal to the
-    // threshold
-    if(chain_length >= resize_threshold) {
-      Resize();
-    }
+      
+      if(key_eq_obj(key, entry_p->kv_pair.first) == true) {
+        cb(entry_p->kv_pair);
+      }
+    } while(entry_p != nullptr && \
+            entry_p->hash_value == hash_value);
     
     return;
   }
@@ -405,7 +409,6 @@ class HashTable_CA_CC {
     
    private:
     HashEntry *entry_p;
-    uint64_t slot_index;
   };
 
 };
