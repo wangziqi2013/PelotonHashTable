@@ -22,6 +22,9 @@ benchmark: ./src/HashTable_OA_KVL.cpp ./src/HashTable_CA_CC.cpp ./test/benchmark
 ca_cc_test: ./src/HashTable_CA_CC.cpp ./test/HashTable_CA_CC_test.cpp
 	$(CXX) $(CXXFLAGS) $(OPT_FLAGS) $^ -o ./bin/ca_cc_test
 
+ca_scc_test: ./src/HashTable_CA_SCC.cpp ./test/HashTable_CA_SCC_test.cpp
+	$(CXX) $(CXXFLAGS) $(OPT_FLAGS) $^ -o ./bin/ca_scc_test
+
 clean:
 	rm -f ./bin/*
 	rm -f ./build/*
