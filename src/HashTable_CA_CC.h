@@ -50,7 +50,7 @@ class HashTable_CA_CC {
   static constexpr uint64_t INIT_SLOT_COUNT = PAGE_SIZE / sizeof(void *);
   
   /*
-   * class HashEntry() - The hash entry for holding key and value
+   * class HashEntry - The hash entry for holding key and value
    *
    * Note that for an optimal use of the data layout, we put hash value and
    * next element pointer together, since if key and value requires even
@@ -78,7 +78,7 @@ class HashTable_CA_CC {
     HashEntry(uint64_t p_hash_value,
               HashEntry *p_next_p,
               const KeyType &key,
-              const ValueType *value) :
+              const ValueType &value) :
       hash_value{p_hash_value},
       next_p{p_next_p},
       kv_pair{key, value}
