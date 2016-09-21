@@ -153,8 +153,8 @@ class HashTable_CA_CC {
     // This entry has not yet been inserted into before
     // i.e. there is no next element in the hash chain
     if(p == nullptr) {
-      // Since the slot was empty just assign the entry to the slot
-      entry_p_list_p[index] = entry_p;
+      // Since the slot was empty just assign the dummy entry to the slot
+      entry_p_list_p[index] = &dummy_entry;
       
       // And then let the previous first entry to be the second entry
       // i.e. pointed to by entry_p
@@ -164,9 +164,6 @@ class HashTable_CA_CC {
       // redirecting the slot pointing to the element after dummy_entry
       if(dummy_entry.next_p == nullptr) {
         dummy_entry.next_p = entry_p;
-        entry_p->next_p = nullptr;
-        
-        entry_p_list_p[index] = entry_p;
         
         return;
       }
@@ -178,7 +175,7 @@ class HashTable_CA_CC {
       // It must be reflecsive (i.e. it must be the first element of the slot
       // derived from its hash value; otherwise no other elements are before
       // it and therefore the first element pointed to by the slot)
-      assert(entry_p_list_p[prev_index] == dummy_entry.next_p);
+      assert(entry_p_list_p[prev_index] == &dummy_entry);
       
       // Redirect the slot to point to the new entry
       entry_p_list_p[prev_index] = entry_p;
@@ -194,7 +191,7 @@ class HashTable_CA_CC {
     
     // Note that here we do not modify entry_p_list_p[index] itself but rather
     // the next element is changed
-    entry_p->next_p = p;
+    entry_p->next_p = p->next_p;
     entry_p_list_p[index]->next_p = entry_p;
     
     return;
@@ -238,11 +235,14 @@ class HashTable_CA_CC {
       // Mask it with the new index mask
       uint64_t new_index = entry_p->hash_value & index_mask;
       
+      // Need to save it first since its next_p will be changed
+      HashEntry *next_p = entry_p->next_p;
+      
       InsertIntoSlot(entry_p, new_index);
       
       // Go to the entry in current valid slots until we have reached
       // to the end
-      entry_p = entry_p->next_p;
+      entry_p = next_p;
     }
     
     return;
@@ -335,6 +335,7 @@ class HashTable_CA_CC {
     uint64_t hash_value = key_hash_obj(key);
     uint64_t index = index_mask & hash_value;
     
+    // We do not initialize its next_p since it will not be relied on
     HashEntry *entry_p = \
       new HashEntry{hash_value, key, value};
     assert(entry_p != nullptr);
@@ -362,23 +363,26 @@ class HashTable_CA_CC {
     uint64_t index = index_mask & hash_value;
 
     HashEntry *entry_p = entry_p_list_p[index];
-
-    // Special case: there is no entry for the key,
-    // i.e. key does not exist
+    
+    // Special case: If key does not exist just return
     if(entry_p == nullptr) {
       return;
+    } else {
+      entry_p = entry_p->next_p;
     }
 
     // Then loop through the collision chain and check hash value
     // as well as key to find values associated with it
-    do {
-      entry_p = entry_p->next_p;
-      
+    while((entry_p != nullptr) && \
+          ((entry_p->hash_value & index_mask) == index)) {
+            
       if(key_eq_obj(key, entry_p->kv_pair.first) == true) {
         cb(entry_p->kv_pair);
       }
-    } while(entry_p != nullptr && \
-            entry_p->hash_value == hash_value);
+      
+      // Immediately go to the next element
+      entry_p = entry_p->next_p;
+    }
     
     return;
   }
