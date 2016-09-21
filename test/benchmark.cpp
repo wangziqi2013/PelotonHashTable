@@ -222,7 +222,7 @@ int main(int argc, char **argv) {
     dbg_printf("Key space = %lu\n", key_num);
 
     OA_KVL_InsertTest(key_num, f);
-    UnorderedMapInsertTest(key_num, f);
+    UnorderedMultimapInsertTest(key_num, f);
     CA_CC_InsertTest(key_num, f);
   } else if(strcmp(p, "--random") == 0) {
     uint64_t key_num = 6 * 1024 * 1024;
@@ -235,7 +235,7 @@ int main(int argc, char **argv) {
     dbg_printf("Key space = %lu\n", key_num);
     
     OA_KVL_InsertTest(key_num, f);
-    UnorderedMapInsertTest(key_num, f);
+    UnorderedMultimapInsertTest(key_num, f);
     CA_CC_InsertTest(key_num, f);
     
   } else {
