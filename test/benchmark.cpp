@@ -12,7 +12,8 @@ using namespace index;
 
 using ValueType = FixedLenValue<64>;
 
-void SequentialInsertTest(uint64_t key_num) {
+void OA_KVL_InsertTest(uint64_t key_num,
+                       std::function<uint64_t(uint64_t)> get_next_key) {
   std::chrono::time_point<std::chrono::system_clock> start, end;
   start = std::chrono::system_clock::now();
   
@@ -23,7 +24,7 @@ void SequentialInsertTest(uint64_t key_num) {
                    std::equal_to<uint64_t>,
                    LoadFactorPercent<75 >> test_map{1024};
   for(uint64_t i = 0;i < key_num;i++) {
-    test_map.Insert(i, ValueType{});
+    test_map.Insert(get_next_key(i), ValueType{});
     //test_map.Insert(i, i + 1);
   }
 
@@ -45,7 +46,7 @@ void SequentialInsertTest(uint64_t key_num) {
   for(int j = 0;j < iter;j++) {
     // Read 1 million keys from std::map
     for(uint64_t i = 0;i < key_num;i++) {
-      ValueType *t = test_map.GetFirstValue(i);
+      ValueType *t = test_map.GetFirstValue(get_next_key(i));
 
       v.push_back(*t);
       v.clear();
@@ -94,14 +95,15 @@ void SequentialInsertTest(uint64_t key_num) {
   return;
 }
 
-void UnorderedMapSequentialInsertTest(uint64_t key_num) {
+void UnorderedMultimapInsertTest(uint64_t key_num,
+                                 std::function<uint64_t(uint64_t)> get_next_key) {
   std::chrono::time_point<std::chrono::system_clock> start, end;
   start = std::chrono::system_clock::now();
 
   // Insert 1 million keys into std::map
   std::unordered_multimap<uint64_t, ValueType, SimpleInt64Hasher> test_map{};
   for(uint64_t i = 0;i < key_num;i++) {
-    test_map.insert({i, ValueType{}});
+    test_map.insert({get_next_key(i), ValueType{}});
     //test_map.insert({i, i + 1});
   }
 
@@ -123,7 +125,7 @@ void UnorderedMapSequentialInsertTest(uint64_t key_num) {
   for(int j = 0;j < iter;j++) {
     // Read 1 million keys from std::map
     for(uint64_t i = 0;i < key_num;i++) {
-      const ValueType &t = test_map.find(i)->second;
+      const ValueType &t = test_map.find(get_next_key(i))->second;
 
       v.push_back(t);
       v.clear();
@@ -139,7 +141,8 @@ void UnorderedMapSequentialInsertTest(uint64_t key_num) {
   return;
 }
 
-void CA_CC_SequentialInsertTest(uint64_t key_num) {
+void CA_CC_InsertTest(uint64_t key_num,
+                      std::function<uint64_t(uint64_t)> get_next_key) {
   std::chrono::time_point<std::chrono::system_clock> start, end;
   start = std::chrono::system_clock::now();
 
@@ -150,7 +153,7 @@ void CA_CC_SequentialInsertTest(uint64_t key_num) {
                   std::equal_to<uint64_t>,
                   LoadFactorPercent<400>> test_map{1024};
   for(uint64_t i = 0;i < key_num;i++) {
-    test_map.Insert(i, ValueType{});
+    test_map.Insert(get_next_key(i), ValueType{});
     //test_map.Insert(i, i + 1);
   }
 
@@ -172,7 +175,7 @@ void CA_CC_SequentialInsertTest(uint64_t key_num) {
   for(int j = 0;j < iter;j++) {
     // Read 1 million keys from std::map
     for(uint64_t i = 0;i < key_num;i++) {
-      test_map.GetValue(i, &v);
+      test_map.GetValue(get_next_key(i), &v);
 
       v.clear();
     }
@@ -213,11 +216,28 @@ int main(int argc, char **argv) {
   char *p = argv[1];
   
   if(strcmp(p, "--seq") == 0) {
-    SequentialInsertTest(6 * 1024 * 1024);
-    UnorderedMapSequentialInsertTest(6 * 1024 * 1024);
-    CA_CC_SequentialInsertTest(6 * 1024 * 1024);
-  } else if(strcmp(p, "--random") == 0) {
+    uint64_t key_num = 6 * 1024 * 1024;
+    auto f = [](uint64_t i) { return i; };
 
+    dbg_printf("Key space = %lu\n", key_num);
+
+    OA_KVL_InsertTest(key_num, f);
+    UnorderedMapInsertTest(key_num, f);
+    CA_CC_InsertTest(key_num, f);
+  } else if(strcmp(p, "--random") == 0) {
+    uint64_t key_num = 6 * 1024 * 1024;
+
+    std::random_device r{};
+    std::default_random_engine e1(r());
+    std::uniform_int_distribution<int> uniform_dist(0, key_num - 1);
+    auto f = [&uniform_dist, &e1](uint64_t i) { return uniform_dist(e1); };
+    
+    dbg_printf("Key space = %lu\n", key_num);
+    
+    OA_KVL_InsertTest(key_num, f);
+    UnorderedMapInsertTest(key_num, f);
+    CA_CC_InsertTest(key_num, f);
+    
   } else {
     printf("Unknown argument: %s\n", p);
   }
