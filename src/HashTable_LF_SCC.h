@@ -77,10 +77,14 @@ class HashTable_LF_SCC {
    * Constructor
    */
   HashTable_LF_SCC(size_t size,
-                   const KeyHashFunc &p_key_hash_obj=KeyHashFunc{}) :
+                   const KeyEqualityChecker &p_key_eq_obj=KeyEqualityChecker{},
+                   const KeyHashFunc &p_key_hash_obj=KeyHashFunc{},
+                   const ValueEqualityChecker &p_value_eq_obj=ValueEqualityChecker{}) :
     dir_size{size},
     dir_p{new std::atomic<HashEntry *>[size]},
-    key_hash_obj{p_key_hash_obj} {
+    key_eq_obj{p_key_eq_obj},
+    key_hash_obj{p_key_hash_obj},
+    value_eq_obj{p_value_eq_obj} {
     assert(dir_p != nullptr);
     // Make sure the size of atomic variable equals the size of a raw pointer
     assert(sizeof(std::atomic<HashEntry *>) == sizeof(void *));
@@ -147,6 +151,13 @@ class HashTable_LF_SCC {
     // This is the value of the head of the linked list
     HashEntry *prev_next_p = dir_p + hash;
     HashEntry *next_p = prev_next_p->load();
+    
+    while(1) {
+      if(key_eq_obj(key, next_p->GetKey() == true) && \
+         value_eq_obj(value, next_p->GetValue()) == true) {
+        //HashEntry *new_next_p = next_p->   
+      }
+    }
   }
   
   
