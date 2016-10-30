@@ -42,13 +42,48 @@ class HashTable_LF_SCC {
       next_p{p_next_p} 
     {}
     
-    void SetNext(HashEntry *p_next_p) {
-      next_p = p_next_p;
-      
-      return;
+    /*
+     * GetNext() - Returns a reference to the next pointer
+     *
+     * The next_p pointer could be either read or written using this method
+     */
+    HashEntry *&GetNext() {
+      return next_p;
     }
   };
   
  private:
   
+  // The size of the directory array
+  size_t dir_size;
+  // This is the fixed-length directory array that could only be read/insert
+  // in a lock-free manner. Rsizing must be conducted mutual exclusively
+  std::atomic<HashEntry *> dir_p;
+
+ public:
+
+  /*
+   * Constructor
+   */
+  HashTable_LF_SCC(size_t size) :
+    dir_size{size},
+    dir_p{new std::atomic<HashEntry *>[size]} {
+    assert(dir_p != nullptr);
+    // Make sure the size of atomic variable equals the size of a raw pointer
+    assert(sizeof(std::atomic<HashEntry *>) == sizeof(void *));
+    
+    // Set the memory region into 0x00 (nullptr) for later use
+    // Note that here we do not use any special memory ordering which
+    // might introduce problem. So let;s put a memory barrier to
+    // wait for writes to complete before the constructor exits
+    memset(dir_p, 0x00, sizeof(std::atomic<HashEntry *>) * size);
+    
+    // Make sure all store instruction reach the cache before
+    // constructor exits
+    // Is it really necessary? - As long as pthread library issue memory barrier
+    // before thread switch this is useless...
+    asm volatile ("mfence" ::: "memory");
+    
+    return;
+  }
 };
