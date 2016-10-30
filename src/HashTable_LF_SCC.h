@@ -19,7 +19,9 @@
  */
 template <typename KeyType, 
           typename ValueType,
-          typename KeyHashFunc>
+          typename KeyEqualityChecker=std::equal_to<KeyType>,
+          typename KeyHashFunc=std::hash<KeyType>,
+          typename ValueEqualityChecker=std::equal_to<ValueType>>
 class HashTable_LF_SCC {
   
   /*
@@ -62,8 +64,12 @@ class HashTable_LF_SCC {
   // This is the fixed-length directory array that could only be read/insert
   // in a lock-free manner. Rsizing must be conducted mutual exclusively
   std::atomic<HashEntry *> dir_p;
+  // Compares whether two keys are equal
+  KeyEqualityChecker key_eq_obj;
   // This is a functor that hashes keys into size_t values
   KeyHashFunc key_hash_obj;
+  // Compares whether two values are equal
+  ValueEqualityChecker value_eq_obj;
 
  public:
 
