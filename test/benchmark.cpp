@@ -17,8 +17,16 @@ using Hasher = SimpleInt64Hasher;
 void OA_KVL_InsertTest(uint64_t key_num,
                        std::function<uint64_t(uint64_t)> get_next_key) {
   std::chrono::time_point<std::chrono::system_clock> start, end;
-  start = std::chrono::system_clock::now();
+   
+  std::vector<uint64_t> key_list{};
+  key_list.reserve(key_num);
+
+  for(uint64_t i = 0;i < key_num;i++) {
+    key_list.push_back(get_next_key(i));
+  }
   
+  start = std::chrono::system_clock::now();
+
   // Insert 1 million keys into std::map
   HashTable_OA_KVL<uint64_t,
                    ValueType,
@@ -26,7 +34,7 @@ void OA_KVL_InsertTest(uint64_t key_num,
                    std::equal_to<uint64_t>,
                    LoadFactorPercent<75>> test_map{1024};
   for(uint64_t i = 0;i < key_num;i++) {
-    test_map.Insert(get_next_key(i), ValueType{});
+    test_map.Insert(key_list[i], ValueType{});
     //test_map.Insert(i, i + 1);
   }
 

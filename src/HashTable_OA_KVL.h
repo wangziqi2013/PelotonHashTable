@@ -14,6 +14,9 @@ namespace index {
   
 #include "common.h"
 
+//void *aligned_malloc_64(size_t sz);
+#define aligned_malloc_64 malloc
+
 /*
  * class HashTable_OA_KVL - Open addressing hash table for storing key-value
  *                          pairs that tses Key Value List for dealing with
@@ -172,7 +175,7 @@ class HashTable_OA_KVL {
       // Malloc a new instance
       KeyValueList *new_kvl_p = \
         static_cast<KeyValueList *>(
-          malloc(KeyValueList::GetAllocSize(capacity << 1)));
+          aligned_malloc_64(KeyValueList::GetAllocSize(capacity << 1)));
       assert(new_kvl_p != nullptr);
           
       // Initialize header
@@ -203,7 +206,7 @@ class HashTable_OA_KVL {
      */
     static KeyValueList *GetNew() {
       KeyValueList *kvl_p = static_cast<KeyValueList *>(
-        malloc(KeyValueList::GetAllocSize(KVL_INIT_VALUE_COUNT)));
+        aligned_malloc_64(KeyValueList::GetAllocSize(KVL_INIT_VALUE_COUNT)));
         
       kvl_p->capacity = KVL_INIT_VALUE_COUNT;
       
@@ -592,7 +595,7 @@ class HashTable_OA_KVL {
    */
   static HashEntry *GetHashEntryListStatic(uint64_t entry_count) {
     HashEntry *entry_list_p = \
-      static_cast<HashEntry *>(malloc(sizeof(HashEntry) * (1 + entry_count)));
+      static_cast<HashEntry *>(aligned_malloc_64(sizeof(HashEntry) * (1 + entry_count)));
       
     for(uint64_t i = 0;i < entry_count;i++) {
       entry_list_p[i].status = HashEntry::StatusCode::FREE;

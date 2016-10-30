@@ -16,7 +16,7 @@ prepare:
 oa_kvl_test: ./src/HashTable_OA_KVL.cpp ./test/HashTable_OA_KVL_test.cpp
 	$(CXX) $(CXXFLAGS) $(OPT_FLAGS) $^ -o ./bin/oa_kvl_test
 
-benchmark: ./src/HashTable_OA_KVL.cpp ./src/HashTable_CA_CC.cpp ./test/benchmark.cpp
+benchmark: ./src/HashTable_OA_KVL.cpp ./src/HashTable_CA_CC.cpp ./src/HashTable_CA_SCC.cpp ./test/benchmark.cpp
 	$(CXX) $(CXXFLAGS) -O3 -DNDEBUG -g $^ -o ./bin/benchmark
     
 ca_cc_test: ./src/HashTable_CA_CC.cpp ./test/HashTable_CA_CC_test.cpp
